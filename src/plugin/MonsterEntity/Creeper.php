@@ -38,6 +38,13 @@ class Creeper extends Monster implements Explosive{
     }
 
     public function onUpdate($currentTick){
+    }
+
+    public function updateTick(){
+        $tk = microtime(true);
+        $tick = $tk - $this->lastUpdate;
+        if(is_int($this->lastUpdate)) $tick = 1;
+        $this->lastUpdate = $tk;
         if($this->dead === true){
             if(++$this->deadTicks == 1){
                 foreach($this->hasSpawned as $player){
@@ -47,48 +54,48 @@ class Creeper extends Monster implements Explosive{
                     $player->dataPacket($pk);
                 }
             }
-            if($this->deadTicks >= 20){
-                $this->close();
-                return false;
-            }
+            $this->knockBackCheck($tick);
             $this->updateMovement();
-            return true;
+            if($this->deadTicks >= 23) $this->close();
+            return;
         }
 
         $this->attackDelay++;
-        if($this->knockBackCheck()) return true;
+        if($this->knockBackCheck($tick)) return;
 
         $this->moveTime++;
         $target = $this->getTarget();
-        $x = $target->x - $this->x;
-        $y = $target->y - $this->y;
-        $z = $target->z - $this->z;
-        $atn = atan2($z, $x);
-        $this->move(cos($atn) * 0.1, sin($atn) * 0.1);
-        $this->setRotation(rad2deg($atn - M_PI_2), rad2deg(-atan2($y, sqrt(pow($x, 2) + pow($z, 2)))));
-        if ($target instanceof Player) {
+        if($this->isMovement()){
+            $x = $target->x - $this->x;
+            $y = $target->y - $this->y;
+            $z = $target->z - $this->z;
+            $atn = atan2($z, $x);
+            $this->move(cos($atn) * $tick * 0.1, sin($atn) * $tick * 0.1);
+            $this->setRotation(rad2deg($atn - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
+        }else{
+            $this->move(0, 0);
+        }
+        if($target instanceof Player){
             if($this->distance($target) > 6.2){
                 if($this->bombTime > 0) $this->bombTime -= min(2, $this->bombTime);
             }else{
                 $this->bombTime++;
-                if($this->bombTime >= 45){
+                if($this->bombTime >= 50){
                     $this->explode();
                     $this->close();
                     $this->closed = true;
-                    return false;
+                    return;
                 }
             }
-        } else {
-            if ($this->distance($target) <= 1) {
+        }else {
+            if($this->distance($target) <= 1){
                 $this->moveTime = 800;
-            } elseif ($this->x === $this->lastX or $this->z === $this->lastZ) {
+            }elseif($this->x === $this->lastX or $this->z === $this->lastZ){
                 $this->moveTime += 20;
             }
         }
-
-        $this->entityBaseTick();
         $this->updateMovement();
-        return true;
+        $this->entityBaseTick($tick);
     }
 
 }

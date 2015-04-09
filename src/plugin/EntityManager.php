@@ -2,45 +2,42 @@
 
 namespace plugin;
 
-//동물
 use plugin\AnimalEntity\Animal;
 use plugin\AnimalEntity\Chicken;
 use plugin\AnimalEntity\Cow;
 use plugin\AnimalEntity\Pig;
 use plugin\AnimalEntity\Sheep;
-
-//몬스터
 use plugin\MonsterEntity\Creeper;
+use plugin\MonsterEntity\Enderman;
 use plugin\MonsterEntity\Monster;
 use plugin\MonsterEntity\PigZombie;
 use plugin\MonsterEntity\Skeleton;
 use plugin\MonsterEntity\Spider;
 use plugin\MonsterEntity\Zombie;
-use plugin\MonsterEntity\Enderman;
-
+use pocketmine\command\Command;
+use pocketmine\command\CommandSender;
 use pocketmine\entity\Arrow;
+use pocketmine\entity\Entity;
 use pocketmine\event\block\BlockBreakEvent;
-use pocketmine\Player;
-use pocketmine\Server;
+use pocketmine\event\Listener;
+use pocketmine\event\player\PlayerInteractEvent;
 use pocketmine\item\Item;
+use pocketmine\level\Position;
 use pocketmine\math\Vector3;
+use pocketmine\nbt\tag\Compound;
+use pocketmine\nbt\tag\Double;
 use pocketmine\nbt\tag\Enum;
 use pocketmine\nbt\tag\Float;
-use pocketmine\entity\Entity;
-use pocketmine\level\Position;
-use pocketmine\nbt\tag\Double;
-use pocketmine\event\Listener;
-use pocketmine\command\Command;
-use pocketmine\nbt\tag\Compound;
-use pocketmine\utils\TextFormat;
+use pocketmine\Player;
 use pocketmine\plugin\PluginBase;
-use pocketmine\command\CommandSender;
 use pocketmine\scheduler\CallbackTask;
-use pocketmine\event\player\PlayerInteractEvent;
+use pocketmine\Server;
+use pocketmine\utils\TextFormat;
 
 class EntityManager extends PluginBase implements Listener{
 
     public $path;
+    public $tick = 0;
 
     public static $entityData;
     public static $spawnerData;
@@ -60,15 +57,15 @@ class EntityManager extends PluginBase implements Listener{
     }
 
     public function onEnable(){
-        if($this->isPhar() === true){
-            @mkdir($this->path = self::core()->getDataPath()."plugins/EntityManager/");
+        //if($this->isPhar() === true){
+            @mkdir($this->path = self::core()->getDataPath() . "plugins/EntityManager/");
             $this->readData();
             self::core()->getPluginManager()->registerEvents($this, $this);
             self::core()->getLogger()->info(TextFormat::GOLD . "[EntityManager]플러그인이 활성화 되었습니다");
-            self::core()->getScheduler()->scheduleDelayedRepeatingTask(new CallbackTask([$this, "SpawningEntity"]), 65, 1);
-        }else{
+            self::core()->getScheduler()->scheduleRepeatingTask(new CallbackTask([$this, "updateEntity"]), 1);
+        /*}else{
             self::core()->getLogger()->info(TextFormat::GOLD . "[EntityManager]플러그인을 Phar파일로 변환해주세요");
-        }
+        }*/
     }
 
     public function onDisable(){
@@ -84,7 +81,7 @@ class EntityManager extends PluginBase implements Listener{
     }
 
     /**
-     * @return Entity[]
+     * @return Animal|Monster[]
      */
     public static function getEntities(){
         $entities = [];
@@ -113,9 +110,12 @@ class EntityManager extends PluginBase implements Listener{
             self::$entityData = yaml_parse($this->yaml($this->path . "EntityData.yml"));
         }else{
             self::$entityData = [
-                "MaximumCount" => 25,
-                "SpawnAnimal" => true,
-                "SpawnMonster" => true,
+                "entity-limit" => 45,
+                "spawn-tick" => 200,
+                "spawn-radius" => 25,
+                "auto-spawn" => true,
+                "spawn-mob" => true,
+                "spawn-animal" => true,
             ];
             file_put_contents($this->path . "EntityData.yml", yaml_emit(self::$entityData, YAML_UTF8_ENCODING));
         }
@@ -128,10 +128,19 @@ class EntityManager extends PluginBase implements Listener{
         }
     }
 
-    public static function getData($data){
-        return isset(self::$entityData[$data]) ? self::$entityData[$data] : false;
+    public static function getData($key){
+        $vars = explode(".", $key);
+        $base = array_shift($vars);
+        if(!isset(self::$entityData[$base])) return false;
+        $base = self::$entityData[$base];
+        while(count($vars) > 0){
+            $baseKey = array_shift($vars);
+            if(!is_array($base) or !isset($base[$baseKey])) return false;
+            $base = $base[$baseKey];
+        }
+        return $base;
     }
-    
+
     /**
      * @param int|string $type
      * @param Position $source
@@ -139,7 +148,9 @@ class EntityManager extends PluginBase implements Listener{
      * @return Entity
      */
     public static function createEntity($type, Position $source){
-        if(self::getData("MaximumCount") <= count(self::getEntities())) return null;
+        if(self::getData("entity-limit") <= count(self::getEntities())) return null;
+        $chunk = $source->getLevel()->getChunk($source->getX() >> 4, $source->getZ() >> 4, true);
+        if($chunk === null or !$chunk->isGenerated()) $source->getLevel()->generateChunk($source->getX() >> 4, $source->getZ() >> 4);
         $nbt = new Compound("", [
             "Pos" => new Enum("Pos", [
                 new Double("", $source->x),
@@ -156,30 +167,58 @@ class EntityManager extends PluginBase implements Listener{
                 new Float("", 0)
             ]),
         ]);
-        return Entity::createEntity($type, $source->getLevel()->getChunk($source->getX() >> 4, $source->getZ() >> 4), $nbt);
+        if(in_array($type, ["Cow", "Pig", "Sheep", "Chicken", 10, 11, 12, 13]) && !self::getData("spawn-animal")) return null;
+        if(in_array($type, ["Zombie", "Creeper", "Skeleton", "Spider", "PigZombie", "Enderman", 32, 33, 34, 35, 36, 38]) && !self::getData("spawn-mob")) return null;
+        return Entity::createEntity($type, $chunk, $nbt);
     }
 
-    public function SpawningEntity(){
-        foreach(self::$spawnerData as $pos => $data){
-            if(mt_rand(0,1) !== 1 or count($data["SpawnMob"]) <= 0) continue;
-            $vector = explode(":", $pos);
-            $radius = (int) ($data["Radius"] / 2);
-            $level = self::core()->getDefaultLevel();
-            $pos = (new Vector3(...$vector))->add(mt_rand(-$radius, $radius), mt_rand(-$radius, $radius), mt_rand(-$radius, $radius));
-            $bb = $level->getBlock($pos)->getBoundingBox();
-            $bb1 = $level->getBlock($pos->add(0, 1))->getBoundingBox();
-            $bb2 = $level->getBlock($pos->add(0, -1))->getBoundingBox();
-			if(
-                ($bb !== null and $bb->maxY - $bb->minY > 0)
-                || ($bb1 !== null and $bb1->maxY - $bb1->minY > 0)
-                || $bb2 === null or ($bb2 !== null and $bb2->maxY - $bb2->minY !== 1)
-            ) continue;
-            $entity = self::createEntity($data["SpawnMob"][mt_rand(0, count($data["SpawnMob"]) - 1)], Position::fromObject($pos, $level));
-            if($entity instanceof Entity){
-				$entity->spawnToAll();
-				$entity->setPosition($pos);
-			}
+    public function updateEntity(){
+        if(++$this->tick >= self::getData("spawn-tick")){
+            foreach(self::$spawnerData as $pos => $data){
+                if(mt_rand(0, 1) > 0 or count($data["mob-list"]) == 0) continue;
+                $radius = (int) $data["radius"];
+                $level = self::core()->getDefaultLevel();
+                $pos = (new Vector3(...explode(":", $pos)))->add(mt_rand(-$radius, $radius), mt_rand(-$radius, $radius), mt_rand(-$radius, $radius));
+                $bb = $level->getBlock($pos)->getBoundingBox();
+                $bb1 = $level->getBlock($pos->add(0, 1))->getBoundingBox();
+                $bb2 = $level->getBlock($pos->add(0, -1))->getBoundingBox();
+                if(
+                    ($bb !== null and $bb->maxY - $bb->minY > 0)
+                    || ($bb1 !== null and $bb1->maxY - $bb1->minY > 0)
+                    || $bb2 === null or ($bb2 !== null and $bb2->maxY - $bb2->minY !== 1)
+                ) continue;
+                $entity = self::createEntity($data["mob-list"][mt_rand(0, count($data["mob-list"]) - 1)], Position::fromObject($pos, $level));
+                if($entity instanceof Entity){
+                    $entity->spawnToAll();
+                    $entity->setPosition($pos);
+                }
+            }
+            if(self::getData("auto-spawn")) foreach(self::core()->getOnlinePlayers() as $player){
+                if(mt_rand(0, 4) > 0) continue;
+                $level = $player->getLevel();
+                $rad = self::getData("spawn-radius");
+                $pos = $player->add(mt_rand(-$rad, $rad), mt_rand(-$rad, $rad), mt_rand(-$rad, $rad));
+                $bb = $level->getBlock($pos)->getBoundingBox();
+                $bb1 = $level->getBlock($pos->add(0, 1))->getBoundingBox();
+                $bb2 = $level->getBlock($pos->add(0, -1))->getBoundingBox();
+                if(
+                    ($bb !== null and $bb->maxY - $bb->minY > 0)
+                    || ($bb1 !== null and $bb1->maxY - $bb1->minY > 0)
+                    || $bb2 === null or ($bb2 !== null and $bb2->maxY - $bb2->minY !== 1)
+                ) continue;
+                $ent = [
+                    ["Cow", "Pig", "Sheep", "Chicken", null, null],
+                    ["Zombie", "Creeper", "Skeleton", "Spider", "PigZombie", "Enderman"]
+                ];
+                $entity = self::createEntity($ent[mt_rand(0, 1)][mt_rand(0, 5)], Position::fromObject($pos, $level));
+                if($entity instanceof Entity){
+                    $entity->spawnToAll();
+                    $entity->setPosition($pos);
+                }
+            }
+            $this->tick = 0;
         }
+        foreach(self::getEntities() as $entity) $entity->updateTick();
     }
 
     public function PlayerInteractEvent(PlayerInteractEvent $ev){
@@ -196,8 +235,8 @@ class EntityManager extends PluginBase implements Listener{
             $ev->setCancelled();
         }elseif($item->getId() === Item::MONSTER_SPAWNER && $ev->getFace() !== 255){
             self::$spawnerData["{$pos->x}:{$pos->y}:{$pos->z}"] = [
-                "Radius" => 10,
-                "SpawnMob" => ["Cow", "Pig", "Sheep", "Chicken", "Zombie", "Creeper", "Skeleton", "Spider", "PigZombie", "Enderman"],
+                "radius" => 4,
+                "mob-list" => ["Cow", "Pig", "Sheep", "Chicken", "Zombie", "Creeper", "Skeleton", "Spider", "PigZombie", "Enderman"],
             ];
             $ev->getPlayer()->sendMessage("[EntityManager]스포너가 설치되었습니다");
         }
@@ -232,7 +271,7 @@ class EntityManager extends PluginBase implements Listener{
                 if($pos !== null && self::createEntity($sub[0], $pos) !== null){
 					$output .= "몬스터가 소환되었어요";
 				}else{
-					$output .= "몬스터를 소환하는데 실패했어요";
+					$output .= "사용법: /스폰 <id|name> (<x> <y> <z>)";
 				}
                 break;
         }

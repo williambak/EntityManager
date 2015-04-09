@@ -2,30 +2,39 @@
 
 namespace plugin\MonsterEntity;
 
+use pocketmine\entity\Entity;
+use pocketmine\entity\Monster as MonsterEntity;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\math\Vector3;
 use pocketmine\network\protocol\AddMobPacket;
-use pocketmine\Player;
 use pocketmine\network\protocol\MovePlayerPacket;
-use pocketmine\entity\Monster as MonsterEntity;
-use pocketmine\entity\Entity;
+use pocketmine\Player;
 use pocketmine\Server;
 
 abstract class Monster extends MonsterEntity{
 
-    /** @var Vector3 */
-    public $target = null;
-
-    public $moveTime = 0;
-    public $bombTime = 0;
-
+    protected $moveTime = 0;
+    protected $bombTime = 0;
+    protected $attackDelay = 0;
     /** @var Entity|null */
     protected $attacker = null;
-    protected $attackDelay = 0;
+    /** @var Vector3 */
+    protected $target = null;
 
+    private $damage = [];
     private $entityMovement = true;
 
+    public abstract function updateTick();
+
+    public function getDamage(){
+        return $this->damage;
+    }
+
+    public function setDamage($damage, $difficulty = 1){
+        if(is_array($damage)) $this->damage = (float) $damage;
+        elseif($difficulty >= 1 && $difficulty <= 3) $this->damage[(int) $difficulty] = (float) $damage;
+    }
 
     public function isMovement(){
         return $this->entityMovement;
@@ -54,7 +63,6 @@ abstract class Monster extends MonsterEntity{
         $this->lastX = $this->x;
         $this->lastY = $this->y;
         $this->lastZ = $this->z;
-
         $this->lastYaw = $this->yaw;
         $this->lastPitch = $this->pitch;
 
@@ -66,7 +74,6 @@ abstract class Monster extends MonsterEntity{
         $pk->yaw = $this->yaw;
         $pk->pitch = $this->pitch;
         $pk->bodyYaw = $this->yaw;
-
         Server::broadcastPacket($this->getViewers(), $pk);
     }
 
@@ -80,38 +87,30 @@ abstract class Monster extends MonsterEntity{
         }
     }
 
-    public function knockBack(Entity $attacker, $damage, $x, $z, $base = 0.4){
-
-    }
+    public function knockBack(Entity $attacker, $damage, $x, $z, $base = 0.4){}
 
     public function move($dx, $dz, $dy = 0){
-        if($this->isMovement() === false) return;
         if($this->onGround === false && $this->lastX !== null && $dy === 0){
             $this->motionY -= $this->gravity;
             $dy = $this->motionY;
         }
-		
 		$movX = $dx;
 		$movY = $dy;
 		$movZ = $dz;
-
 		$list = $this->level->getCollisionCubes($this, $this->boundingBox->getOffsetBoundingBox($dx, $dy, $dz));
-
-		foreach($list as $bb){
+        foreach($list as $bb){
+            $dy = $bb->calculateYOffset($this->boundingBox, $dy);
+        }
+        $this->boundingBox->offset(0, $dy, 0);
+        foreach($list as $bb){
 			$dx = $bb->calculateXOffset($this->boundingBox, $dx);
 		}
-		$this->boundingBox->offset($dx, 0, 0);
-
-		foreach($list as $bb){
-			$dz = $bb->calculateZOffset($this->boundingBox, $dz);
-		}
-		$this->boundingBox->offset(0, 0, $dz);
-
-		foreach($list as $bb){
-			$dy = $bb->calculateYOffset($this->boundingBox, $dy);
-		}
-		$this->boundingBox->offset(0, $dy, 0);
-		$this->setComponents($this->x + $dx, $this->y + $dy, $this->z + $dz);
+        $this->boundingBox->offset($dx, 0, 0);
+        foreach($list as $bb){
+            $dz = $bb->calculateZOffset($this->boundingBox, $dz);
+        }
+        $this->boundingBox->offset(0, 0, $dz);
+        $this->setComponents($this->x + $dx, $this->y + $dy, $this->z + $dz);
 
 		$this->isCollidedVertically = $movY != $dy;
 		$this->isCollidedHorizontally = ($movX != $dx or $movZ != $dz);
@@ -121,23 +120,21 @@ abstract class Monster extends MonsterEntity{
 		$this->updateFallState($dy, $this->onGround);
     }
     
-    public function knockBackCheck(){
+    public function knockBackCheck($tick){
         if(!$this->attacker instanceof Entity) return false;
 
         if($this->moveTime > 5) $this->moveTime = 5;
 		$this->moveTime--;
         $target = $this->attacker;
-
         $x = $target->x - $this->x;
         $y = $target->y - $this->y;
         $z = $target->z - $this->z;
         $atn = atan2($z, $x);
-        $this->move(cos($atn) * -0.28, sin($atn) * -0.28, 0.32);
+        $this->move(-cos($atn) * $tick * 0.38, -sin($atn) * $tick * 0.38, 0.42);
         $this->setRotation(rad2deg(atan2($z, $x) - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
-
-        $this->entityBaseTick();
-        $this->updateMovement();
         if($this->moveTime <= 0) $this->attacker = null;
+        $this->updateMovement();
+        $this->entityBaseTick($tick);
         return true;
     }
 
@@ -145,6 +142,7 @@ abstract class Monster extends MonsterEntity{
      * @return Player|Vector3
      */
     public function getTarget(){
+        if(!$this->isMovement()) return new Vector3();
         $target = null;
         $nearDistance = PHP_INT_MAX;
         foreach($this->getViewers() as $p){

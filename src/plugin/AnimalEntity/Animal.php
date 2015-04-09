@@ -2,30 +2,31 @@
 
 namespace plugin\AnimalEntity;
 
+use pocketmine\entity\Animal as AnimalEntity;
 use pocketmine\entity\Entity;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
-use pocketmine\math\AxisAlignedBB;
-use pocketmine\math\Math;
 use pocketmine\math\Vector3;
 use pocketmine\network\protocol\AddMobPacket;
-use pocketmine\Player;
 use pocketmine\network\protocol\EntityEventPacket;
 use pocketmine\network\protocol\MovePlayerPacket;
-use pocketmine\network\protocol\RemoveEntityPacket;
-use pocketmine\entity\Animal as AnimalEntity;
-use pocketmine\scheduler\CallbackTask;
+use pocketmine\Player;
 use pocketmine\Server;
 
 abstract class Animal extends AnimalEntity{
 
+    protected $moveTime = 0;
     /** @var Vector3 */
-    public $target = null;
-    public $moveTime = 0;
-
+    protected $target = null;
     /** @var Entity|null */
     protected $attacker = null;
+
     private $entityMovement = true;
+
+    /**
+     * @return Player|Vector3
+     */
+    public abstract function getTarget();
 
     public function spawnTo(Player $player){
         $pk = new AddMobPacket();
@@ -46,7 +47,6 @@ abstract class Animal extends AnimalEntity{
         $this->lastX = $this->x;
         $this->lastY = $this->y;
         $this->lastZ = $this->z;
-
         $this->lastYaw = $this->yaw;
         $this->lastPitch = $this->pitch;
 
@@ -58,7 +58,6 @@ abstract class Animal extends AnimalEntity{
         $pk->yaw = $this->yaw;
         $pk->pitch = $this->pitch;
         $pk->bodyYaw = $this->yaw;
-
         Server::broadcastPacket($this->getViewers(), $pk);
     }
 
@@ -71,26 +70,54 @@ abstract class Animal extends AnimalEntity{
         $this->entityMovement = (bool) $value;
     }
 
-    public function knockBackCheck(){
-        if (!$this->attacker instanceof Entity) return false;
+    public function knockBack(Entity $attacker, $damage, $x, $z, $base = 0.4){}
 
+    public function move($dx, $dz, $dy = 0){
+        if($this->onGround === false && $this->lastX !== null && $dy === 0){
+            $this->motionY -= $this->gravity;
+            $dy = $this->motionY;
+        }
+        $movX = $dx;
+        $movY = $dy;
+        $movZ = $dz;
+        $list = $this->level->getCollisionCubes($this, $this->boundingBox->getOffsetBoundingBox($dx, $dy, $dz));
+        foreach($list as $bb){
+            $dx = $bb->calculateXOffset($this->boundingBox, $dx);
+        }
+        foreach($list as $bb){
+            $dz = $bb->calculateZOffset($this->boundingBox, $dz);
+        }
+        foreach($list as $bb){
+            $dy = $bb->calculateYOffset($this->boundingBox, $dy);
+        }
+        $this->boundingBox->offset($dx, 0, 0);
+        $this->boundingBox->offset(0, $dy, 0);
+        $this->boundingBox->offset(0, 0, $dz);
+
+        $this->isCollidedVertically = $movY != $dy;
+        $this->isCollidedHorizontally = ($movX != $dx or $movZ != $dz);
+        $this->isCollided = ($this->isCollidedHorizontally or $this->isCollidedVertically);
+        $this->onGround = ($movY != $dy and $movY < 0);
+        if($this->onGround) $this->motionY = 0;
+        $this->updateFallState($dy, $this->onGround);
+        $this->setComponents($this->x + $dx, $this->y + $dy, $this->z + $dz);
+    }
+
+    public function knockBackCheck($tick){
+        if(!$this->attacker instanceof Entity) return false;
+
+        if($this->moveTime > 5) $this->moveTime = 5;
         $this->moveTime--;
         $target = $this->attacker;
-
         $x = $target->x - $this->x;
         $y = $target->y - $this->y;
         $z = $target->z - $this->z;
         $atn = atan2($z, $x);
-        if($this->moveTime >= 3){
-            $this->move(cos($atn) * -0.64, 0.58, sin($atn) * -0.62);
-        }else{
-            $this->move(cos($atn) * -0.64, -0.46, sin($atn) * -0.62);
-        }
+        $this->move(-cos($atn) * $tick * 0.35, -sin($atn) * $tick * 0.35, 0.41);
         $this->setRotation(rad2deg(atan2($z, $x) - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
-
-        $this->entityBaseTick();
-        $this->updateMovement();
         if($this->moveTime <= 0) $this->attacker = null;
+        $this->updateMovement();
+        $this->entityBaseTick($tick);
         return true;
     }
 
@@ -98,75 +125,17 @@ abstract class Animal extends AnimalEntity{
         if($this->attacker instanceof Entity) return;
         parent::attack($damage, $source);
         if($source instanceof EntityDamageByEntityEvent and !$source->isCancelled()){
-            $this->moveTime = 6;
+            $this->moveTime = 9;
             $this->attacker = $source->getDamager();
         }
     }
 
-    public function getCollisionCubes(AxisAlignedBB $bb){
-        $minX = Math::floorFloat($bb->minX);
-        $minY = Math::floorFloat($bb->minY);
-        $minZ = Math::floorFloat($bb->minZ);
-        $maxX = Math::floorFloat($bb->maxX + 1);
-        $maxY = Math::floorFloat($bb->maxY + 1);
-        $maxZ = Math::floorFloat($bb->maxZ + 1);
+    public function onUpdate($currentTick){}
 
-        $all = [];
-        $blocks = [];
-
-        for($z = $minZ; $z < $maxZ; ++$z){
-            for($x = $minX; $x < $maxX; ++$x){
-                for($y = $minY - 1; $y < $maxY; ++$y){
-                    $block = $this->level->getBlock(new Vector3($x, $y, $z));
-                    if($block->getId() > 0){
-                        $blocks[] = $block;
-                        $block->collidesWithBB($bb, $all);
-                    }
-                }
-            }
-        }
-
-        foreach($this->level->getCollidingEntities($bb->grow(0.25, 0.25, 0.25), $this) as $ent){
-            $all[] = clone $ent->boundingBox;
-        }
-
-        return [
-            "all" => $all,
-            "block" => $blocks,
-        ];
-    }
-
-    public function move($dx, $dz, $dy = 0){
-        if($this->isMovement() === false) return;
-        $movX = $dx;
-        $movY = $dy;
-        $movZ = $dz;
-        if($this->keepMovement === false){
-            /** @var AxisAlignedBB[] $list */
-            $lists = $this->getCollisionCubes($this->boundingBox->addCoord($dx, 0, $dz));
-            $list = $lists["all"];
-            foreach($list as $bb){
-                $dx = $bb->calculateXOffset($this->boundingBox, $dx);
-            }
-            $this->boundingBox->offset($dx, 0, 0);
-            foreach($list as $bb){
-                $dz = $bb->calculateZOffset($this->boundingBox, $dz);
-            }
-            $this->boundingBox->offset(0, 0, $dz);
-            /*foreach($lists["block"] as $block){
-                // @var Block $block
-                $blbb = $block->getBoundingBox();
-                if($blbb !== null and $blbb->maxY - $blbb->minY <= 1) $dy += 0.32;
-            }*/
-            $this->setComponents($this->x + $dx, $this->y, $this->z + $dz);
-        }else{
-            $this->setComponents($this->x + $dx, $this->y + $dy, $this->z + $dz);
-        }
-        $this->onGround = ($movY !== $dy and $dy < 0);
-        $this->updateFallState($dy, $this->onGround);
-    }
-
-    public function onUpdate($currentTick){
+    public function updateTick(){
+        $tk = $this->server->getTick();
+        $tick = $tk - $this->lastUpdate;
+        $this->lastUpdate = $tk;
         if($this->dead === true){
             if(++$this->deadTicks == 1){
                 foreach($this->hasSpawned as $player){
@@ -176,24 +145,24 @@ abstract class Animal extends AnimalEntity{
                     $player->dataPacket($pk);
                 }
             }
-            if($this->deadTicks >= 23){
-                $this->close();
-                return false;
-            }
             $this->updateMovement();
-            return true;
+            $this->knockBackCheck($tick);
+            if($this->deadTicks >= 23) $this->close();
+            return;
         }
-
-        if($this->knockBackCheck()) return true;
-
+        if($this->knockBackCheck($tick)) return;
         $this->moveTime++;
         $target = $this->getTarget();
-        $x = $target->x - $this->x;
-        $y = $target->y - $this->y;
-        $z = $target->z - $this->z;
-        $atn = atan2($z, $x);
-        $this->move(cos($atn) * 0.1, sin($atn) * 0.1);
-        $this->setRotation(rad2deg($atn - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
+        if($this->isMovement()){
+            $x = $target->x - $this->x;
+            $y = $target->y - $this->y;
+            $z = $target->z - $this->z;
+            $atn = atan2($z, $x);
+            $this->move(cos($atn) * $tick * 0.1, sin($atn) * $tick * 0.1);
+            $this->setRotation(rad2deg($atn - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
+        }else{
+            $this->move(0, 0);
+        }
         if($target instanceof Player){
             if($this->distance($target) <= 2){
                 $this->pitch = 22;
@@ -208,16 +177,9 @@ abstract class Animal extends AnimalEntity{
                 $this->moveTime += 50;
             }
         }
-
-        $this->entityBaseTick();
         $this->updateMovement();
-        return true;
+        $this->entityBaseTick($tick);
     }
-
-    /**
-     * @return Player|Vector3
-     */
-    public abstract function getTarget();
     
     public function getData(){
         $flags = 0;
