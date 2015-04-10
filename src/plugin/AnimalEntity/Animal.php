@@ -7,11 +7,9 @@ use pocketmine\entity\Entity;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\math\Vector3;
-use pocketmine\network\protocol\AddMobPacket;
+use pocketmine\network\protocol\AddEntityPacket;
 use pocketmine\network\protocol\EntityEventPacket;
-use pocketmine\network\protocol\MovePlayerPacket;
 use pocketmine\Player;
-use pocketmine\Server;
 
 abstract class Animal extends AnimalEntity{
 
@@ -27,20 +25,22 @@ abstract class Animal extends AnimalEntity{
      * @return Player|Vector3
      */
     public abstract function getTarget();
-
     public function spawnTo(Player $player){
-        $pk = new AddMobPacket();
+        parent::spawnTo($player);
+
+        $pk = new AddEntityPacket();
         $pk->eid = $this->getID();
         $pk->type = static::NETWORK_ID;
         $pk->x = $this->x;
         $pk->y = $this->y;
         $pk->z = $this->z;
+        $pk->speedX = 0;
+        $pk->speedY = 0;
+        $pk->speedZ = 0;
         $pk->yaw = $this->yaw;
         $pk->pitch = $this->pitch;
-        $pk->metadata = $this->getData();
+        $pk->metadata = $this->dataProperties;
         $player->dataPacket($pk);
-
-        parent::spawnTo($player);
     }
 
     public function updateMovement(){
@@ -50,17 +50,8 @@ abstract class Animal extends AnimalEntity{
         $this->lastYaw = $this->yaw;
         $this->lastPitch = $this->pitch;
 
-        $pk = new MovePlayerPacket();
-        $pk->eid = $this->id;
-        $pk->x = $this->x;
-        $pk->y = $this->y;
-        $pk->z = $this->z;
-        $pk->yaw = $this->yaw;
-        $pk->pitch = $this->pitch;
-        $pk->bodyYaw = $this->yaw;
-        Server::broadcastPacket($this->getViewers(), $pk);
+        foreach($this->hasSpawned as $player) $player->addEntityMovement($this->id, $this->x, $this->y, $this->z, $this->yaw, $this->pitch, $this->yaw);
     }
-
 
     public function isMovement(){
         return $this->entityMovement;
@@ -121,11 +112,12 @@ abstract class Animal extends AnimalEntity{
         return true;
     }
 
-    public function attack($damage, $source = EntityDamageEvent::CAUSE_MAGIC){
+    public function attack($damage, EntityDamageEvent $source){
         if($this->attacker instanceof Entity) return;
+        $health = $this->getHealth();
         parent::attack($damage, $source);
-        if($source instanceof EntityDamageByEntityEvent and !$source->isCancelled()){
-            $this->moveTime = 9;
+        if($source instanceof EntityDamageByEntityEvent and ($health - $damage) == $this->getHealth()){
+            $this->moveTime = 100;
             $this->attacker = $source->getDamager();
         }
     }
@@ -180,16 +172,5 @@ abstract class Animal extends AnimalEntity{
         $this->updateMovement();
         $this->entityBaseTick($tick);
     }
-    
-    public function getData(){
-        $flags = 0;
-        $flags |= $this->fireTicks > 0 ? 1 : 0;
 
-        return [
-            0 => ["type" => 0, "value" => $flags],
-            1 => ["type" => 1, "value" => $this->airTicks],
-            16 => ["type" => 0, "value" => 0],
-            17 => ["type" => 6, "value" => [0, 0, 0]],
-        ];
-    }
 }

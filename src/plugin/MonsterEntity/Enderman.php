@@ -5,8 +5,6 @@ namespace plugin\MonsterEntity;
 use plugin\EntityManager;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
-use pocketmine\level\format\FullChunk;
-use pocketmine\nbt\tag\Compound;
 use pocketmine\nbt\tag\String;
 use pocketmine\network\protocol\EntityEventPacket;
 use pocketmine\Player;
@@ -17,12 +15,8 @@ class Enderman extends Monster{
     public $width = 0.7;
     public $height = 2.8;
 
-    public function __construct(FullChunk $chunk, Compound $nbt){
-        parent::__construct($chunk, $nbt);
-        $this->setDamage([0, 6, 4, 6]);
-    }
-
     protected function initEntity(){
+        $this->setDamage([0, 6, 4, 6]);
         $this->namedtag->id = new String("id", "Enderman");
     }
 
@@ -34,10 +28,6 @@ class Enderman extends Monster{
     }
 
     public function updateTick(){
-        $tk = microtime(true);
-        $tick = $tk - $this->lastUpdate;
-        if(is_int($this->lastUpdate)) $tick = 1;
-        $this->lastUpdate = $tk;
         if($this->dead === true){
             if(++$this->deadTicks == 1){
                 foreach($this->hasSpawned as $player){
@@ -47,14 +37,14 @@ class Enderman extends Monster{
                     $player->dataPacket($pk);
                 }
             }
-            $this->knockBackCheck($tick);
+            $this->knockBackCheck();
             $this->updateMovement();
             if($this->deadTicks >= 23) $this->close();
             return;
         }
 
         $this->attackDelay++;
-        if($this->knockBackCheck($tick)) return;
+        if($this->knockBackCheck()) return;
 
         $this->moveTime++;
         $target = $this->getTarget();
@@ -63,7 +53,7 @@ class Enderman extends Monster{
             $y = $target->y - $this->y;
             $z = $target->z - $this->z;
             $atn = atan2($z, $x);
-            $this->move(cos($atn) * $tick * 0.1, sin($atn) * $tick * 0.1);
+            $this->move(cos($atn) * 0.1, sin($atn) * 0.1);
             $this->setRotation(rad2deg($atn - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
         }else{
             $this->move(0, 0);
@@ -81,7 +71,7 @@ class Enderman extends Monster{
                 $this->moveTime += 20;
             }
         }
-        $this->entityBaseTick($tick);
+        $this->entityBaseTick();
         $this->updateMovement();
     }
 

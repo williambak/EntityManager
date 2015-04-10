@@ -99,7 +99,6 @@ class EntityManager extends PluginBase implements Listener{
                 || $ent instanceof Arrow
                 || $ent instanceof \pocketmine\entity\Item
             ){
-                $ent->attack(1000);
                 $ent->close();
             }
         }

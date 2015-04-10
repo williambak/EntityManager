@@ -7,10 +7,8 @@ use pocketmine\entity\Monster as MonsterEntity;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\math\Vector3;
-use pocketmine\network\protocol\AddMobPacket;
-use pocketmine\network\protocol\MovePlayerPacket;
+use pocketmine\network\protocol\AddEntityPacket;
 use pocketmine\Player;
-use pocketmine\Server;
 
 abstract class Monster extends MonsterEntity{
 
@@ -32,7 +30,7 @@ abstract class Monster extends MonsterEntity{
     }
 
     public function setDamage($damage, $difficulty = 1){
-        if(is_array($damage)) $this->damage = (float) $damage;
+        if(is_array($damage)) $this->damage = $damage;
         elseif($difficulty >= 1 && $difficulty <= 3) $this->damage[(int) $difficulty] = (float) $damage;
     }
 
@@ -45,18 +43,21 @@ abstract class Monster extends MonsterEntity{
     }
 
     public function spawnTo(Player $player){
-        $pk = new AddMobPacket();
+        parent::spawnTo($player);
+
+        $pk = new AddEntityPacket();
         $pk->eid = $this->getID();
         $pk->type = static::NETWORK_ID;
         $pk->x = $this->x;
         $pk->y = $this->y;
         $pk->z = $this->z;
+        $pk->speedX = 0;
+        $pk->speedY = 0;
+        $pk->speedZ = 0;
         $pk->yaw = $this->yaw;
         $pk->pitch = $this->pitch;
-        $pk->metadata = $this->getData();
+        $pk->metadata = $this->dataProperties;
         $player->dataPacket($pk);
-
-        parent::spawnTo($player);
     }
 
     public function updateMovement(){
@@ -66,18 +67,10 @@ abstract class Monster extends MonsterEntity{
         $this->lastYaw = $this->yaw;
         $this->lastPitch = $this->pitch;
 
-        $pk = new MovePlayerPacket();
-        $pk->eid = $this->id;
-        $pk->x = $this->x;
-        $pk->y = $this->y;
-        $pk->z = $this->z;
-        $pk->yaw = $this->yaw;
-        $pk->pitch = $this->pitch;
-        $pk->bodyYaw = $this->yaw;
-        Server::broadcastPacket($this->getViewers(), $pk);
+        foreach($this->hasSpawned as $player) $player->addEntityMovement($this->id, $this->x, $this->y, $this->z, $this->yaw, $this->pitch, $this->yaw);
     }
 
-    public function attack($damage, $source = EntityDamageEvent::CAUSE_MAGIC){
+    public function attack($damage, EntityDamageEvent $source){
         if($this->attacker instanceof Entity) return;
         $health = $this->getHealth();
         parent::attack($damage, $source);
@@ -120,7 +113,7 @@ abstract class Monster extends MonsterEntity{
 		$this->updateFallState($dy, $this->onGround);
     }
     
-    public function knockBackCheck($tick){
+    public function knockBackCheck(){
         if(!$this->attacker instanceof Entity) return false;
 
         if($this->moveTime > 5) $this->moveTime = 5;
@@ -130,11 +123,11 @@ abstract class Monster extends MonsterEntity{
         $y = $target->y - $this->y;
         $z = $target->z - $this->z;
         $atn = atan2($z, $x);
-        $this->move(-cos($atn) * $tick * 0.38, -sin($atn) * $tick * 0.38, 0.42);
+        $this->move(-cos($atn) * 0.38, -sin($atn) * 0.38, 0.42);
         $this->setRotation(rad2deg(atan2($z, $x) - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
         if($this->moveTime <= 0) $this->attacker = null;
+        $this->entityBaseTick();
         $this->updateMovement();
-        $this->entityBaseTick($tick);
         return true;
     }
 
@@ -162,16 +155,5 @@ abstract class Monster extends MonsterEntity{
         }
         return $this->target;
     }
-    
-    public function getData(){
-        $flags = 0;
-        $flags |= $this->fireTicks > 0 ? 1 : 0;
 
-        return [
-            0 => ["type" => 0, "value" => $flags],
-            1 => ["type" => 1, "value" => $this->airTicks],
-            16 => ["type" => 0, "value" => 0],
-            17 => ["type" => 6, "value" => [0, 0, 0]],
-        ];
-    }
 }

@@ -3,9 +3,7 @@
 namespace plugin\AnimalEntity;
 
 use pocketmine\item\Item;
-use pocketmine\level\format\FullChunk;
 use pocketmine\math\Vector3;
-use pocketmine\nbt\tag\Compound;
 use pocketmine\nbt\tag\String;
 use pocketmine\Player;
 
@@ -15,12 +13,8 @@ class Chicken extends Animal{
     public $width = 0.4;
     public $height = 0.75;
 
-    public function __construct(FullChunk $chunk, Compound $nbt){
-        parent::__construct($chunk, $nbt);
+    public function initEntity(){
         $this->setMaxHealth(4);
-    }
-
-    protected function initEntity(){
         $this->namedtag->id = new String("id", "Chicken");
     }
 
