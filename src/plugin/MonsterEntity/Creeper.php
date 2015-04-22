@@ -46,7 +46,7 @@ class Creeper extends Monster implements Explosive{
         $tick = (microtime(true) - $this->lastTick) * 20;
         if($this->dead === true){
             $this->knockBackCheck($tick);
-            if(++$this->deadTicks >= 23) $this->close();
+            if(++$this->deadTicks >= 25) $this->close();
             return;
         }
 

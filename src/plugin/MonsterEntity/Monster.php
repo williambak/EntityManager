@@ -34,12 +34,20 @@ abstract class Monster extends MonsterEntity{
 
     public abstract function updateTick();
 
+    public function onUpdate($currentTick){
+        return false;
+    }
+
     public function isCreated(){
         return $this->created;
     }
 
-    public function onUpdate($currentTick){
-        return false;
+    public function isMovement(){
+        return $this->entityMovement;
+    }
+
+    public function setMovement($value){
+        $this->entityMovement = (bool) $value;
     }
 
     public function getDamage(){
@@ -54,14 +62,6 @@ abstract class Monster extends MonsterEntity{
         $difficulty = $difficulty === null ? Server::getInstance()->getDifficulty() : (int) $difficulty;
         if(is_array($damage)) $this->damage = $damage;
         elseif($difficulty >= 1 && $difficulty <= 3) $this->damage[$difficulty] = (float) $damage;
-    }
-
-    public function isMovement(){
-        return $this->entityMovement;
-    }
-
-    public function setMovement($value){
-        $this->entityMovement = (bool) $value;
     }
 
     public function spawnTo(Player $player){
@@ -113,7 +113,7 @@ abstract class Monster extends MonsterEntity{
         }
         $pk = new EntityEventPacket();
         $pk->eid = $this->getId();
-        $pk->event = (int)$this->getHealth() <= 0 ? 3 : 2; //Ouch!
+        $pk->event = (int)$this->getHealth() <= 0 ? 3 : 2;
         Server::broadcastPacket($this->hasSpawned, $pk->setChannel(Network::CHANNEL_WORLD_EVENTS));
     }
 
@@ -130,7 +130,7 @@ abstract class Monster extends MonsterEntity{
                 if(--$this->stayTime <= 0) $this->stayVec = null;
             }
             else{
-                $add = $this instanceof PigZombie && $this->isAngry() ? 0.12 : 0.1;
+                $add = $this instanceof PigZombie && $this->isAngry() ? 0.122 : 0.1;
                 if(!$this->onGround && $this->lastY !== null) $this->motionY -= $this->gravity;
                 $this->move(cos($atn) * $add * $tick, sin($atn) * $add * $tick, $this->motionY);
             }
@@ -160,12 +160,12 @@ abstract class Monster extends MonsterEntity{
         $this->boundingBox->offset(0, 0, $dz);
         $this->setComponents($this->x + $dx, $this->y + $dy, $this->z + $dz);
 
+        $this->updateFallState($dy, $this->onGround = ($movY != $dy and $movY < 0));
+        if($this->onGround) $this->motionY = 0;
+
         $this->isCollidedVertically = $movY != $dy;
         $this->isCollidedHorizontally = ($movX != $dx or $movZ != $dz);
         $this->isCollided = ($this->isCollidedHorizontally or $this->isCollidedVertically);
-        $this->onGround = ($movY != $dy and $movY < 0);
-        if($this->onGround) $this->motionY = 0;
-        $this->updateFallState($dy, $this->onGround);
     }
 
     public function knockBackCheck($tick = 1){
@@ -219,5 +219,4 @@ abstract class Monster extends MonsterEntity{
         }
         return $this->target;
     }
-
 }

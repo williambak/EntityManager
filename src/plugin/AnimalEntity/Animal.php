@@ -35,6 +35,10 @@ abstract class Animal extends AnimalEntity{
      */
     public abstract function getTarget();
 
+    public function onUpdate($currentTick){
+        return false;
+    }
+
     public function isCreated(){
         return $this->created;
     }
@@ -140,12 +144,12 @@ abstract class Animal extends AnimalEntity{
         $this->boundingBox->offset(0, 0, $dz);
         $this->setComponents($this->x + $dx, $this->y + $dy, $this->z + $dz);
 
+        $this->updateFallState($dy, $this->onGround = ($movY != $dy and $movY < 0));
+        if($this->onGround) $this->motionY = 0;
+
         $this->isCollidedVertically = $movY != $dy;
         $this->isCollidedHorizontally = ($movX != $dx or $movZ != $dz);
         $this->isCollided = ($this->isCollidedHorizontally or $this->isCollidedVertically);
-        $this->onGround = ($movY != $dy and $movY < 0);
-        if($this->onGround) $this->motionY = 0;
-        $this->updateFallState($dy, $this->onGround);
     }
 
     public function knockBackCheck($tick = 1){
@@ -167,15 +171,14 @@ abstract class Animal extends AnimalEntity{
         return true;
     }
 
-    public function onUpdate($currentTick){}
-
     public function updateTick(){
         $tick = (microtime(true) - $this->lastTick) * 20;
         if($this->dead === true){
             $this->knockBackCheck($tick);
-            if(++$this->deadTicks >= 23) $this->close();
+            if(++$this->deadTicks >= 25) $this->close();
             return;
         }
+
         if($this->knockBackCheck($tick)) return;
 
         $this->moveTime += $tick;
