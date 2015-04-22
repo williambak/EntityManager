@@ -13,6 +13,10 @@ class Cow extends Animal{
     public $width = 1.6;
     public $height = 1.12;
 
+    public function getName(){
+        return "소";
+    }
+
     public function initEntity(){
         parent::initEntity();
         $this->setMaxHealth(10);
@@ -22,6 +26,11 @@ class Cow extends Animal{
     }
 
     public function getTarget(){
+        if(!$this->isMovement()) return new Vector3();
+        if($this->stayTime > 0){
+            if($this->stayVec === null or mt_rand(1, 40) <= 4) $this->stayVec = $this->add(mt_rand(-10, 10), 0, mt_rand(-10, 10));
+            return $this->stayVec;
+        }
         $target = null;
         $nearDistance = PHP_INT_MAX;
         foreach($this->hasSpawned as $p){
@@ -34,17 +43,16 @@ class Cow extends Animal{
                 }
             }
         }
+        if($target === null && $this->stayTime <= 0 && mt_rand(1, 420) === 1){
+            $this->stayTime = mt_rand(82, 400);
+            return $this->stayVec = $this->add(mt_rand(-10, 10), 0, mt_rand(-10, 10));
+        }
         if($target instanceof Player){
             return $target;
         }elseif($this->moveTime >= mt_rand(400, 800) or ($target === null and !$this->target instanceof Vector3)){
             $this->moveTime = 0;
-            return $this->target = new Vector3($this->x + mt_rand(-100, 100), $this->y, $this->z + mt_rand(-100,100));
+            $this->target = new Vector3($this->x + mt_rand(-100, 100), $this->y, $this->z + mt_rand(-100,100));
         }
         return $this->target;
     }
-
-    public function getName(){
-        return "소";
-    }
-
 }

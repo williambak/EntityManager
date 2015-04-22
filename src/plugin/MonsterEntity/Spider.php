@@ -2,13 +2,11 @@
 
 namespace plugin\MonsterEntity;
 
-use plugin\EntityManager;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\item\Item;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\String;
-use pocketmine\network\protocol\EntityEventPacket;
 use pocketmine\Player;
 
 class Spider extends Monster{

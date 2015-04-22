@@ -117,8 +117,6 @@ abstract class Monster extends MonsterEntity{
         Server::broadcastPacket($this->hasSpawned, $pk->setChannel(Network::CHANNEL_WORLD_EVENTS));
     }
 
-    public function knockBack(Entity $attacker, $damage, $x, $z, $base = 0.4){}
-
     public function updateMove($tick = 1){
         $target = null;
         if($this->isMovement()){

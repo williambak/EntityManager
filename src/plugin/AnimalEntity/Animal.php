@@ -43,6 +43,10 @@ abstract class Animal extends AnimalEntity{
         return $this->entityMovement;
     }
 
+    public function setMovement($value){
+        $this->entityMovement = (bool) $value;
+    }
+
     public function spawnTo(Player $player){
         parent::spawnTo($player);
 
@@ -70,12 +74,6 @@ abstract class Animal extends AnimalEntity{
 
         foreach($this->hasSpawned as $player) $player->addEntityMovement($this->id, $this->x, $this->y, $this->z, $this->yaw, $this->pitch, $this->yaw);
     }
-
-    public function setMovement($value){
-        $this->entityMovement = (bool) $value;
-    }
-
-    public function knockBack(Entity $attacker, $damage, $x, $z, $base = 0.4){}
 
     public function attack($damage, EntityDamageEvent $source){
         if($this->attacker instanceof Entity) return;

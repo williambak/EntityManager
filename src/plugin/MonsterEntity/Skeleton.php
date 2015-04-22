@@ -15,7 +15,6 @@ use pocketmine\nbt\tag\Double;
 use pocketmine\nbt\tag\Enum;
 use pocketmine\nbt\tag\Float;
 use pocketmine\nbt\tag\String;
-use pocketmine\network\protocol\EntityEventPacket;
 use pocketmine\Player;
 
 class Skeleton extends Monster implements ProjectileSource{
