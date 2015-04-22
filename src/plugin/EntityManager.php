@@ -8,33 +8,33 @@ use plugin\AnimalEntity\Cow;
 use plugin\AnimalEntity\Pig;
 use plugin\AnimalEntity\Sheep;
 use plugin\MonsterEntity\Creeper;
+use plugin\MonsterEntity\Enderman;
 use plugin\MonsterEntity\Monster;
 use plugin\MonsterEntity\PigZombie;
 use plugin\MonsterEntity\Skeleton;
 use plugin\MonsterEntity\Spider;
 use plugin\MonsterEntity\Zombie;
-use plugin\MonsterEntity\Enderman;
+use pocketmine\command\Command;
+use pocketmine\command\CommandSender;
 use pocketmine\entity\Arrow;
+use pocketmine\entity\Entity;
 use pocketmine\event\block\BlockBreakEvent;
+use pocketmine\event\Listener;
+use pocketmine\event\player\PlayerInteractEvent;
+use pocketmine\item\Item;
 use pocketmine\level\Level;
 use pocketmine\level\Location;
-use pocketmine\Player;
-use pocketmine\Server;
-use pocketmine\item\Item;
+use pocketmine\level\Position;
 use pocketmine\math\Vector3;
+use pocketmine\nbt\tag\Compound;
+use pocketmine\nbt\tag\Double;
 use pocketmine\nbt\tag\Enum;
 use pocketmine\nbt\tag\Float;
-use pocketmine\entity\Entity;
-use pocketmine\level\Position;
-use pocketmine\nbt\tag\Double;
-use pocketmine\event\Listener;
-use pocketmine\command\Command;
-use pocketmine\nbt\tag\Compound;
-use pocketmine\utils\TextFormat;
+use pocketmine\Player;
 use pocketmine\plugin\PluginBase;
-use pocketmine\command\CommandSender;
 use pocketmine\scheduler\CallbackTask;
-use pocketmine\event\player\PlayerInteractEvent;
+use pocketmine\Server;
+use pocketmine\utils\TextFormat;
 
 class EntityManager extends PluginBase implements Listener{
 
@@ -179,15 +179,15 @@ class EntityManager extends PluginBase implements Listener{
             ]),
         ]);
         $entity = Entity::createEntity($type, $chunk, $nbt);
-		if($entity instanceof Animal && !self::getData("spawn-animal")){
-			$entity->close();
-			return null;
-		}elseif($entity instanceof Monster && !self::getData("spawn-mob")){
-			$entity->close();
-			return null;
-		}
+        if($entity instanceof Animal && !self::getData("spawn-animal")){
+            $entity->close();
+            return null;
+        }elseif($entity instanceof Monster && !self::getData("spawn-mob")){
+            $entity->close();
+            return null;
+        }
         if($entity instanceof Entity && $isSpawn === true) $entity->spawnToAll();
-		return $entity;
+        return $entity;
     }
 
     public function updateEntity(){
@@ -316,10 +316,10 @@ class EntityManager extends PluginBase implements Listener{
                 }
                 
                 if(isset($pos) && self::createEntity($sub[0], $pos) !== null){
-					$output .= "몬스터가 소환되었어요";
-				}else{
-					$output .= "사용법: /스폰 <id|name> (x) (y) (z) (level)";
-				}
+                    $output .= "몬스터가 소환되었어요";
+                }else{
+                    $output .= "사용법: /스폰 <id|name> (x) (y) (z) (level)";
+                }
                 break;
         }
         $i->sendMessage($output);
