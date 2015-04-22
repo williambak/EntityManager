@@ -6,8 +6,7 @@ use plugin\EntityManager;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\item\Item;
-use pocketmine\level\format\FullChunk;
-use pocketmine\nbt\tag\Compound;
+use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\String;
 use pocketmine\network\protocol\EntityEventPacket;
 use pocketmine\Player;
@@ -19,69 +18,48 @@ class Spider extends Monster{
     public $length = 0.8;
     public $height = 1.12;
 
-    public function __construct(FullChunk $chunk, Compound $nbt){
-        parent::__construct($chunk, $nbt);
-    }
-
     protected function initEntity(){
+        parent::initEntity();
         $this->setMaxHealth(16);
         $this->setDamage([0, 2, 2, 3]);
         $this->namedtag->id = new String("id", "Spider");
+        $this->lastTick = microtime(true);
+        $this->created = true;
     }
 
     public function getName(){
         return "거미";
     }
 
-    public function onUpdate($currentTick){
-    }
-
     public function updateTick(){
+        $tick = (microtime(true) - $this->lastTick) * 20;
         if($this->dead === true){
-            if(++$this->deadTicks == 1){
-                foreach($this->hasSpawned as $player){
-                    $pk = new EntityEventPacket();
-                    $pk->eid = $this->id;
-                    $pk->event = 3;
-                    $player->dataPacket($pk);
-                }
-            }
-            $this->knockBackCheck();
-            $this->updateMovement();
-            if($this->deadTicks >= 23) $this->close();
+            $this->knockBackCheck($tick);
+            if(++$this->deadTicks >= 23) $this->close();
             return;
         }
 
-        $this->attackDelay++;
-        if($this->knockBackCheck()) return;
+        $this->attackDelay += $tick;
+        if($this->knockBackCheck($tick)) return;
 
-        $this->moveTime++;
-        $target = $this->getTarget();
-        if($this->isMovement()){
-            $x = $target->x - $this->x;
-            $y = $target->y - $this->y;
-            $z = $target->z - $this->z;
-            $atn = atan2($z, $x);
-            $this->move(cos($atn) * 0.1, sin($atn) * 0.1);
-            $this->setRotation(rad2deg($atn - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
-        }else{
-            $this->move(0, 0);
-        }
+        $this->moveTime += $tick;
+        $target = $this->updateMove($tick);
         if($target instanceof Player){
             if($this->attackDelay >= 16 && $this->distance($target) <= 1.1){
                 $this->attackDelay = 0;
-                $ev = new EntityDamageByEntityEvent($this, $target, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $this->getDamage()[EntityManager::core()->getDifficulty()]);
+                $ev = new EntityDamageByEntityEvent($this, $target, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $this->getDamage()[$this->server->getDifficulty()]);
                 $target->attack($ev->getFinalDamage(), $ev);
             }
-        }else{
+        }elseif($target instanceof Vector3){
             if($this->distance($target) <= 1){
                 $this->moveTime = 800;
             }elseif($this->x === $this->lastX or $this->z === $this->lastZ){
                 $this->moveTime += 20;
             }
         }
-        $this->entityBaseTick();
+        $this->entityBaseTick($tick);
         $this->updateMovement();
+        $this->lastTick = microtime(true);
     }
 
     public function getDrops(){

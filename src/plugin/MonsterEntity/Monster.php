@@ -2,36 +2,58 @@
 
 namespace plugin\MonsterEntity;
 
-use pocketmine\entity\Entity;
-use pocketmine\entity\Monster as MonsterEntity;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\math\Vector3;
+use pocketmine\network\Network;
 use pocketmine\network\protocol\AddEntityPacket;
+use pocketmine\network\protocol\EntityEventPacket;
 use pocketmine\Player;
+use pocketmine\entity\Monster as MonsterEntity;
+use pocketmine\entity\Entity;
+use pocketmine\Server;
 
 abstract class Monster extends MonsterEntity{
 
-    protected $moveTime = 0;
-    protected $bombTime = 0;
-    protected $attackDelay = 0;
-    /** @var Entity|null */
-    protected $attacker = null;
+    /** @var Vector3 */
+    public $stayVec = null;
+    public $stayTime = 0;
+
     /** @var Vector3 */
     protected $target = null;
+    /** @var Entity|null */
+    protected $attacker = null;
+
+    protected $lastTick = 0;
+    protected $moveTime = 0;
+    protected $created = false;
+    protected $attackDelay = 0;
 
     private $damage = [];
     private $entityMovement = true;
 
     public abstract function updateTick();
 
+    public function isCreated(){
+        return $this->created;
+    }
+
+    public function onUpdate($currentTick){
+        return false;
+    }
+
     public function getDamage(){
         return $this->damage;
     }
 
-    public function setDamage($damage, $difficulty = 1){
+    /**
+     * @param float|float[] $damage
+     * @param int $difficulty
+     */
+    public function setDamage($damage, $difficulty = null){
+        $difficulty = $difficulty === null ? Server::getInstance()->getDifficulty() : (int) $difficulty;
         if(is_array($damage)) $this->damage = $damage;
-        elseif($difficulty >= 1 && $difficulty <= 3) $this->damage[(int) $difficulty] = (float) $damage;
+        elseif($difficulty >= 1 && $difficulty <= 3) $this->damage[$difficulty] = (float) $damage;
     }
 
     public function isMovement(){
@@ -72,21 +94,55 @@ abstract class Monster extends MonsterEntity{
 
     public function attack($damage, EntityDamageEvent $source){
         if($this->attacker instanceof Entity) return;
-        $health = $this->getHealth();
-        parent::attack($damage, $source);
-        if($source instanceof EntityDamageByEntityEvent and ($health - $damage) == $this->getHealth()){
+        if($this->attackTime > 0 or $this->noDamageTicks > 0){
+            $lastCause = $this->getLastDamageCause();
+            if($lastCause !== null and $lastCause->getDamage() >= $damage){
+                $source->setCancelled();
+            }
+        }
+
+        Entity::attack($damage, $source);
+
+        if($source->isCancelled()) return;
+
+        $this->attackTime = 10;
+        if($source instanceof EntityDamageByEntityEvent){
             $this->moveTime = 100;
             $this->attacker = $source->getDamager();
+            if($this instanceof PigZombie) $this->setAngry(1000);
         }
+        $pk = new EntityEventPacket();
+        $pk->eid = $this->getId();
+        $pk->event = (int) $this->getHealth() <= 0 ? 3 : 2; //Ouch!
+        Server::broadcastPacket($this->hasSpawned, $pk->setChannel(Network::CHANNEL_WORLD_EVENTS));
     }
 
     public function knockBack(Entity $attacker, $damage, $x, $z, $base = 0.4){}
 
-    public function move($dx, $dz, $dy = 0){
-        if($this->onGround === false && $this->lastX !== null && $dy === 0){
-            $this->motionY -= $this->gravity;
-            $dy = $this->motionY;
+    public function updateMove($tick = 1){
+        $target = null;
+        if($this->isMovement()){
+            $target = $this->getTarget();
+            $x = $target->x - $this->x;
+            $y = $target->y - $this->y;
+            $z = $target->z - $this->z;
+            $atn = atan2($z, $x);
+            if($this->stayTime > 0){
+                $this->move(0, 0);
+                if(--$this->stayTime <= 0) $this->stayVec = null;
+            }else{
+                $add = $this instanceof PigZombie && $this->isAngry() ? 0.12 : 0.1;
+                if(!$this->onGround && $this->lastY !== null) $this->motionY -= $this->gravity;
+                $this->move(cos($atn) * $add * $tick, sin($atn) * $add * $tick, $this->motionY);
+            }
+            $this->setRotation(rad2deg($atn - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
+        }else{
+            $this->move(0, 0);
         }
+        return $target;
+    }
+
+    public function move($dx, $dz, $dy = 0){
 		$movX = $dx;
 		$movY = $dy;
 		$movZ = $dz;
@@ -113,21 +169,22 @@ abstract class Monster extends MonsterEntity{
 		$this->updateFallState($dy, $this->onGround);
     }
     
-    public function knockBackCheck(){
+    public function knockBackCheck($tick = 1){
         if(!$this->attacker instanceof Entity) return false;
 
         if($this->moveTime > 5) $this->moveTime = 5;
-		$this->moveTime--;
+		$this->moveTime -= $tick;
         $target = $this->attacker;
         $x = $target->x - $this->x;
         $y = $target->y - $this->y;
         $z = $target->z - $this->z;
         $atn = atan2($z, $x);
-        $this->move(-cos($atn) * 0.38, -sin($atn) * 0.38, 0.42);
+        $this->move(-cos($atn) * 0.3 * $tick, -sin($atn) * 0.3 * $tick, $this->moveTime > 3 ? 0.6 * $tick : 0);
         $this->setRotation(rad2deg(atan2($z, $x) - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
-        if($this->moveTime <= 0) $this->attacker = null;
-        $this->entityBaseTick();
+        if((int) $this->moveTime <= 0) $this->attacker = null;
+        $this->entityBaseTick($tick);
         $this->updateMovement();
+        $this->lastTick = microtime(true);
         return true;
     }
 
@@ -136,10 +193,14 @@ abstract class Monster extends MonsterEntity{
      */
     public function getTarget(){
         if(!$this->isMovement()) return new Vector3();
+        if($this->stayTime > 0){
+            if($this->stayVec === null or mt_rand(1, 40) <= 4) $this->stayVec = $this->add(mt_rand(-10, 10), 0, mt_rand(-10, 10));
+            return $this->stayVec;
+        }
         $target = null;
         $nearDistance = PHP_INT_MAX;
         foreach($this->getViewers() as $p){
-            if(($distance = $this->distanceSquared($p)) <= 81 and $p->spawned and $p->isSurvival() and $p->dead == false and !$p->closed){
+            if($p->spawned and !$p->dead and !$p->closed and $p->isSurvival() and ($distance = $this->distanceSquared($p)) <= 81){
                 if($distance < $nearDistance){
                     $target = $p;
                     $nearDistance = $distance;
@@ -147,11 +208,18 @@ abstract class Monster extends MonsterEntity{
                 }
             }
         }
-        if($target instanceof Player){
+        if(($target === null || ($this instanceof PigZombie && !$this->isAngry())) && $this->stayTime <= 0 && mt_rand(1, 420) === 1){
+            $this->stayTime = mt_rand(82, 400);
+            return $this->stayVec = $this->add(mt_rand(-10, 10), 0, mt_rand(-10, 10));
+        }
+        if(
+            (!$this instanceof PigZombie && $target instanceof Player)
+            || ($this instanceof PigZombie && $this->isAngry() && $target instanceof Player)
+        ){
             return $target;
         }elseif($this->moveTime >= mt_rand(650, 800) or ($target === null and !$this->target instanceof Vector3)){
             $this->moveTime = 0;
-            return $this->target = new Vector3($this->x + mt_rand(-100, 100), $this->y, $this->z + mt_rand(-100,100));
+            $this->target = $this->add(mt_rand(-100, 100), 0, mt_rand(-100, 100));
         }
         return $this->target;
     }

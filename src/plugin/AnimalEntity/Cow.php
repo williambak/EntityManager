@@ -14,8 +14,11 @@ class Cow extends Animal{
     public $height = 1.12;
 
     public function initEntity(){
+        parent::initEntity();
         $this->setMaxHealth(10);
         $this->namedtag->id = new String("id", "Cow");
+        $this->lastTick = microtime(true);
+        $this->created = true;
     }
 
     public function getTarget(){

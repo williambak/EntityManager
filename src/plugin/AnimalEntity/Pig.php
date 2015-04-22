@@ -2,9 +2,12 @@
 
 namespace plugin\AnimalEntity;
 
+use pocketmine\entity\Entity;
 use pocketmine\entity\Rideable;
 use pocketmine\item\Item;
+use pocketmine\level\format\FullChunk;
 use pocketmine\math\Vector3;
+use pocketmine\nbt\tag\Compound;
 use pocketmine\nbt\tag\String;
 use pocketmine\Player;
 
@@ -16,8 +19,11 @@ class Pig extends Animal implements Rideable{
     public $height = 1.12;
 
     public function initEntity(){
+        parent::initEntity();
         $this->setMaxHealth(10);
         $this->namedtag->id = new String("id", "Pig");
+        $this->lastTick = microtime(true);
+        $this->created = true;
     }
 
     public function getTarget(){

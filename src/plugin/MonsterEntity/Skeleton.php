@@ -6,7 +6,10 @@ use pocketmine\entity\Entity;
 use pocketmine\entity\ProjectileSource;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityShootBowEvent;
+use pocketmine\event\entity\ProjectileLaunchEvent;
 use pocketmine\item\Item;
+use pocketmine\level\sound\LaunchSound;
+use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Compound;
 use pocketmine\nbt\tag\Double;
 use pocketmine\nbt\tag\Enum;
@@ -23,47 +26,29 @@ class Skeleton extends Monster implements ProjectileSource{
     public $height = 1.8;
 
     protected function initEntity(){
+        parent::initEntity();
         $this->namedtag->id = new String("id", "Skeleton");
+        $this->lastTick = microtime(true);
+        $this->created = true;
     }
 
     public function getName(){
         return "스켈레톤";
     }
 
-    public function onUpdate($currentTick){
-    }
-
     public function updateTick(){
+        $tick = (microtime(true) - $this->lastTick) * 20;
         if($this->dead === true){
-            if(++$this->deadTicks == 1){
-                foreach($this->hasSpawned as $player){
-                    $pk = new EntityEventPacket();
-                    $pk->eid = $this->id;
-                    $pk->event = 3;
-                    $player->dataPacket($pk);
-                }
-            }
-            $this->knockBackCheck();
-            $this->updateMovement();
-            if($this->deadTicks >= 23) $this->close();
+            $this->knockBackCheck($tick);
+            if(++$this->deadTicks >= 23) $this->close();
             return;
         }
 
-        $this->attackDelay++;
-        if($this->knockBackCheck()) return;
+        $this->attackDelay += $tick;
+        if($this->knockBackCheck($tick)) return;
 
-        $this->moveTime++;
-        $target = $this->getTarget();
-        if($this->isMovement()){
-            $x = $target->x - $this->x;
-            $y = $target->y - $this->y;
-            $z = $target->z - $this->z;
-            $atn = atan2($z, $x);
-            $this->move(cos($atn) * 0.1, sin($atn) * 0.1);
-            $this->setRotation(rad2deg($atn - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
-        }else{
-            $this->move(0, 0);
-        }
+        $this->moveTime += $tick;
+        $target = $this->updateMove($tick);
         if($target instanceof Player){
             if($this->attackDelay >= 16 && $this->distance($target) <= 7 and mt_rand(1,25) === 1){
                 $this->attackDelay = 0;
@@ -86,27 +71,32 @@ class Skeleton extends Monster implements ProjectileSource{
                         new Float("", $pitch)
                     ]),
                 ]);
-                /** @var \pocketmine\entity\Arrow $arrow */
-                $arrow = Entity::createEntity("Arrow", $this->chunk, $nbt, $this);
 
-                $ev = new EntityShootBowEvent($this, Item::get(Item::ARROW, 0, 1), $arrow, $f);
+                $ev = new EntityShootBowEvent($this, Item::get(Item::ARROW, 0, 1), Entity::createEntity("Arrow", $this->chunk, $nbt, $this), $f);
 
                 $this->server->getPluginManager()->callEvent($ev);
                 if($ev->isCancelled()){
-                    $arrow->kill();
+                    $ev->getProjectile()->kill();
                 }else{
-                    $arrow->spawnToAll();
+                    $this->server->getPluginManager()->callEvent($launch = new ProjectileLaunchEvent($ev->getProjectile()));
+                    if($launch->isCancelled()){
+                        $launch->getEntity()->kill();
+                    }else{
+                        $launch->getEntity()->spawnToAll();
+                        $this->level->addSound(new LaunchSound($this), $this->getViewers());
+                    }
                 }
             }
-        }else{
+        }elseif($target instanceof Vector3){
             if($this->distance($target) <= 1){
                 $this->moveTime = 800;
             }elseif($this->x == $this->lastX or $this->z == $this->lastZ){
                 $this->moveTime += 20;
             }
         }
-        $this->entityBaseTick();
+        $this->entityBaseTick($tick);
         $this->updateMovement();
+        $this->lastTick = microtime(true);
     }
 
     public function getDrops(){
