@@ -2,6 +2,8 @@
 
 namespace plugin\MonsterEntity;
 
+use pocketmine\entity\Entity;
+use pocketmine\entity\Monster as MonsterEntity;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\math\Vector3;
@@ -9,8 +11,6 @@ use pocketmine\network\Network;
 use pocketmine\network\protocol\AddEntityPacket;
 use pocketmine\network\protocol\EntityEventPacket;
 use pocketmine\Player;
-use pocketmine\entity\Monster as MonsterEntity;
-use pocketmine\entity\Entity;
 use pocketmine\Server;
 
 abstract class Monster extends MonsterEntity{
