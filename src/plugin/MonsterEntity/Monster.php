@@ -226,8 +226,7 @@ abstract class Monster extends MonsterEntity{
             $this->stayTime = mt_rand(82, 400);
             return $this->stayVec = $this->add(mt_rand(-10, 10), 0, mt_rand(-10, 10));
         }
-        if((!$this instanceof PigZombie && $target instanceof Player) || ($this instanceof PigZombie && $this->isAngry() && $target instanceof Player)
-        ){
+        if((!$this instanceof PigZombie && $target instanceof Player) || ($this instanceof PigZombie && $this->isAngry() && $target instanceof Player)){
             return $target;
         }
         elseif($this->moveTime >= mt_rand(650, 800) or ($target === null and !$this->target instanceof Vector3)){
