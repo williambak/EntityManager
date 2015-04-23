@@ -31,7 +31,7 @@ abstract class Monster extends MonsterEntity{
     protected $attackDelay = 0;
 
     private $damage = [];
-    private $entityMovement = true;
+    private $movement = true;
 
     public abstract function updateTick();
 
@@ -44,11 +44,11 @@ abstract class Monster extends MonsterEntity{
     }
 
     public function isMovement(){
-        return $this->entityMovement;
+        return $this->movement;
     }
 
     public function setMovement($value){
-        $this->entityMovement = (bool) $value;
+        $this->movement = (bool) $value;
     }
 
     public function getDamage(){
@@ -121,6 +121,8 @@ abstract class Monster extends MonsterEntity{
 
         $this->attackTime = 10;
         if($source instanceof EntityDamageByEntityEvent){
+            $this->stayTime = 0;
+            $this->stayVec = null;
             $this->moveTime = 100;
             $this->attacker = $source->getDamager();
             if($this instanceof PigZombie) $this->setAngry(1000);
