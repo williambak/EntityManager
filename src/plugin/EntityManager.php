@@ -19,6 +19,7 @@ use pocketmine\command\CommandSender;
 use pocketmine\entity\Arrow;
 use pocketmine\entity\Entity;
 use pocketmine\event\block\BlockBreakEvent;
+use pocketmine\event\entity\EntitySpawnEvent;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerInteractEvent;
 use pocketmine\item\Item;
@@ -44,6 +45,7 @@ class EntityManager extends PluginBase implements Listener{
 
     public static $entityData;
     public static $spawnerData;
+    public static $isLoaded = false;
 
     public function __construct(){
         Entity::registerEntity(Cow::class);
@@ -60,22 +62,46 @@ class EntityManager extends PluginBase implements Listener{
     }
 
     public function onEnable(){
-        //if($this->isPhar() === true){
-            @mkdir($this->path = self::core()->getDataPath() . "plugins/EntityManager/");
-            $this->readData();
+        if($this->isPhar() === true){
+            self::$isLoaded = true;
+            $this->path = self::core()->getDataPath() . "plugins/EntityManager/";
+            if(!is_dir($this->path)) mkdir($this->path);
+            if(file_exists($this->path. "EntityData.yml")){
+                self::$entityData = yaml_parse($this->yaml($this->path . "EntityData.yml"));
+            }else{
+                self::$entityData = [
+                    "entity-limit" => 45,
+                    "spawn-tick" => 150,
+                    "spawn-radius" => 25,
+                    "auto-spawn" => true,
+                    "spawn-mob" => true,
+                    "spawn-animal" => true,
+                ];
+                file_put_contents($this->path . "EntityData.yml", yaml_emit(self::$entityData, YAML_UTF8_ENCODING));
+            }
+
+            if(file_exists($this->path. "SpawnerData.yml")){
+                self::$spawnerData = yaml_parse($this->yaml($this->path . "SpawnerData.yml"));
+            }else{
+                self::$spawnerData = [];
+                file_put_contents($this->path . "SpawnerData.yml", yaml_emit(self::$spawnerData, YAML_UTF8_ENCODING));
+            }
+
             self::core()->getPluginManager()->registerEvents($this, $this);
             self::core()->getLogger()->info(TextFormat::GOLD . "[EntityManager]플러그인이 활성화 되었습니다");
             self::core()->getScheduler()->scheduleRepeatingTask(new CallbackTask([$this, "updateEntity"]), 1);
-        /*}else{
+        }else{
             self::core()->getLogger()->info(TextFormat::GOLD . "[EntityManager]플러그인을 Phar파일로 변환해주세요");
-        }*/
+        }
     }
 
     public function onDisable(){
+        if(!$this->isPhar() || !self::$isLoaded) return;
         file_put_contents($this->path . "SpawnerData.yml", yaml_emit(self::$spawnerData, YAML_UTF8_ENCODING));
     }
 
     public static function yaml($file){
+        if(!self::$isLoaded) return "";
         return preg_replace("#^([ ]*)([a-zA-Z_]{1}[^\:]*)\:#m", "$1\"$2\":", file_get_contents($file));
     }
 
@@ -89,6 +115,7 @@ class EntityManager extends PluginBase implements Listener{
      * @return Animal[]|Monster[]
      */
     public static function getEntities(Level $level = null){
+        if(!self::$isLoaded) return [];
         $entities = [];
         $level = $level === null ? self::core()->getDefaultLevel() : $level;
         foreach($level->getEntities() as $id => $ent){
@@ -104,6 +131,7 @@ class EntityManager extends PluginBase implements Listener{
      * @return bool
      */
     public static function clearEntity(Level $level = null, $type = null){
+        if(!self::$isLoaded) return false;
         $type = $type === null ? [Animal::class, Monster::class] : $type;
         if(!is_array($type) || count($type) === 0) return false;
         $level = $level === null ? self::core()->getDefaultLevel() : $level;
@@ -115,30 +143,8 @@ class EntityManager extends PluginBase implements Listener{
         return true;
     }
 
-    public function readData(){
-        if(file_exists($this->path. "EntityData.yml")){
-            self::$entityData = yaml_parse($this->yaml($this->path . "EntityData.yml"));
-        }else{
-            self::$entityData = [
-                "entity-limit" => 45,
-                "spawn-tick" => 150,
-                "spawn-radius" => 25,
-                "auto-spawn" => true,
-                "spawn-mob" => true,
-                "spawn-animal" => true,
-            ];
-            file_put_contents($this->path . "EntityData.yml", yaml_emit(self::$entityData, YAML_UTF8_ENCODING));
-        }
-
-        if(file_exists($this->path. "SpawnerData.yml")){
-            self::$spawnerData = yaml_parse($this->yaml($this->path . "SpawnerData.yml"));
-        }else{
-            self::$spawnerData = [];
-            file_put_contents($this->path . "SpawnerData.yml", yaml_emit(self::$spawnerData, YAML_UTF8_ENCODING));
-        }
-    }
-
     public static function getData($key){
+        if(!self::$isLoaded) return null;
         $vars = explode(".", $key);
         $base = array_shift($vars);
         if(!isset(self::$entityData[$base])) return false;
@@ -159,7 +165,7 @@ class EntityManager extends PluginBase implements Listener{
      * @return Animal|Monster
      */
     public static function createEntity($type, Position $source, $isSpawn = true){
-        if(self::getData("entity-limit") <= count(self::getEntities())) return null;
+        if(!self::$isLoaded || self::getData("entity-limit") <= count(self::getEntities())) return null;
         $chunk = $source->getLevel()->getChunk($source->getX() >> 4, $source->getZ() >> 4, true);
         if($chunk === null or !$chunk->isGenerated()) return null;
         $nbt = new Compound("", [
@@ -252,6 +258,17 @@ class EntityManager extends PluginBase implements Listener{
         }
     }
 
+    public function EntitySpawnEvent(EntitySpawnEvent $ev){
+        $entity = $ev->getEntity();
+        if($entity instanceof Animal && !self::getData("spawn-animal")){
+            $entity->close();
+        }elseif($entity instanceof Monster && !self::getData("spawn-mob")){
+            $entity->close();
+        }elseif(self::getData("entity-limit") <= count(self::getEntities())){
+            $entity->close();
+        }
+    }
+
     public function PlayerInteractEvent(PlayerInteractEvent $ev){
         if(
             ($ev->getAction() !== PlayerInteractEvent::RIGHT_CLICK_AIR && $ev->getAction() !== PlayerInteractEvent::RIGHT_CLICK_BLOCK)
@@ -284,6 +301,7 @@ class EntityManager extends PluginBase implements Listener{
     }
 
     public function onCommand(CommandSender $i, Command $cmd, $label, array $sub){
+        if(!$this->isPhar() || !self::$isLoaded) return true;
         $output = "[EntityManager]";
         switch($cmd->getName()){
             case "제거":

@@ -7,6 +7,7 @@ use pocketmine\entity\Entity;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\math\Vector3;
+use pocketmine\nbt\tag\Byte;
 use pocketmine\network\Network;
 use pocketmine\network\protocol\AddEntityPacket;
 use pocketmine\network\protocol\EntityEventPacket;
@@ -28,7 +29,7 @@ abstract class Animal extends AnimalEntity{
     protected $moveTime = 0;
     protected $created = false;
 
-    private $entityMovement = true;
+    private $movement = true;
 
     /**
      * @return Player|Vector3
@@ -44,11 +45,24 @@ abstract class Animal extends AnimalEntity{
     }
 
     public function isMovement(){
-        return $this->entityMovement;
+        return $this->movement;
     }
 
     public function setMovement($value){
-        $this->entityMovement = (bool) $value;
+        $this->movement = (bool) $value;
+    }
+
+    public function initEntity(){
+        parent::initEntity();
+        if(!isset($this->namedtag->Movement)){
+            $this->namedtag->Movement = new Byte("Movement", (int) $this->isMovement());
+        }
+        $this->setMovement($this->namedtag["Movement"]);
+    }
+
+    public function saveNBT(){
+        parent::saveNBT();
+        $this->namedtag->Movement = new Byte("Movement", $this->isMovement());
     }
 
     public function spawnTo(Player $player){
@@ -94,6 +108,8 @@ abstract class Animal extends AnimalEntity{
 
         $this->attackTime = 10;
         if($source instanceof EntityDamageByEntityEvent){
+            $this->stayTime = 0;
+            $this->stayVec = null;
             $this->moveTime = 100;
             $this->attacker = $source->getDamager();
         }
@@ -113,7 +129,8 @@ abstract class Animal extends AnimalEntity{
             $atn = atan2($z, $x);
             if($this->stayTime > 0){
                 $this->move(0, 0);
-                if(--$this->stayTime <= 0) $this->stayVec = null;
+                $this->stayTime -= $tick;
+                if($this->stayTime <= 0) $this->stayVec = null;
             }else{
                 if(!$this->onGround && $this->lastY !== null) $this->motionY -= $this->gravity;
                 $this->move(cos($atn) * 0.07 * $tick, sin($atn) * 0.07 * $tick, $this->motionY);

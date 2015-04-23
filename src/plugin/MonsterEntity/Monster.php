@@ -7,6 +7,7 @@ use pocketmine\entity\Monster as MonsterEntity;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\math\Vector3;
+use pocketmine\nbt\tag\Byte;
 use pocketmine\network\Network;
 use pocketmine\network\protocol\AddEntityPacket;
 use pocketmine\network\protocol\EntityEventPacket;
@@ -62,6 +63,19 @@ abstract class Monster extends MonsterEntity{
         $difficulty = $difficulty === null ? Server::getInstance()->getDifficulty() : (int) $difficulty;
         if(is_array($damage)) $this->damage = $damage;
         elseif($difficulty >= 1 && $difficulty <= 3) $this->damage[$difficulty] = (float) $damage;
+    }
+
+    protected function initEntity(){
+        parent::initEntity();
+        if(!isset($this->namedtag->Movement)){
+            $this->namedtag->Movement = new Byte("Movement", (int) $this->isMovement());
+        }
+        $this->setMovement($this->namedtag["Movement"]);
+    }
+
+    public function saveNBT(){
+        parent::saveNBT();
+        $this->namedtag->Movement = new Byte("Movement", $this->isMovement());
     }
 
     public function spawnTo(Player $player){
@@ -127,7 +141,8 @@ abstract class Monster extends MonsterEntity{
             $atn = atan2($z, $x);
             if($this->stayTime > 0){
                 $this->move(0, 0);
-                if(--$this->stayTime <= 0) $this->stayVec = null;
+                $this->stayTime -= $tick;
+                if($this->stayTime <= 0) $this->stayVec = null;
             }
             else{
                 $add = $this instanceof PigZombie && $this->isAngry() ? 0.122 : 0.1;
@@ -180,7 +195,7 @@ abstract class Monster extends MonsterEntity{
         $atn = atan2($z, $x);
         $this->move(-cos($atn) * 0.3 * $tick, -sin($atn) * 0.3 * $tick, $this->moveTime > 3 ? 0.6 * $tick : 0);
         $this->setRotation(rad2deg(atan2($z, $x) - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
-        if((int)$this->moveTime <= 0) $this->attacker = null;
+        if((int) $this->moveTime <= 0) $this->attacker = null;
         $this->entityBaseTick($tick);
         $this->updateMovement();
         $this->lastTick = microtime(true);
