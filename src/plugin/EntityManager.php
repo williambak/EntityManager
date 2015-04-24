@@ -145,7 +145,7 @@ class EntityManager extends PluginBase implements Listener{
      *
      * @return bool
      */
-    public static function clearEntity(Level $level = null, $type = null){
+    public static function clearEntity(Level $level = null, $type = []){
         if(!self::$isLoaded || !is_array($type)) return false;
         $type = count($type) === 0 ? [Animal::class, Monster::class] : $type;
         $level = $level === null ? self::core()->getDefaultLevel() : $level;
