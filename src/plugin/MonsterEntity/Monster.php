@@ -110,11 +110,12 @@ abstract class Monster extends MonsterEntity{
 
     public function attack($damage, EntityDamageEvent $source){
         if($this->attacker instanceof Entity) return;
-        if($this->attackTime > 0 or $this->noDamageTicks > 0){
-            $lastCause = $this->getLastDamageCause();
-            if($lastCause !== null and $lastCause->getDamage() >= $damage){
-                $source->setCancelled();
-            }
+        if($this instanceof PigZombie
+            && ($source->getCause() === EntityDamageEvent::CAUSE_FIRE
+            || $source->getCause() === EntityDamageEvent::CAUSE_FIRE_TICK
+            || $source->getCause() === EntityDamageEvent::CAUSE_LAVA)
+        ){
+            $source->setCancelled();
         }
 
         Entity::attack($damage, $source);

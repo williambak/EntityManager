@@ -93,6 +93,15 @@ class EntityManager extends PluginBase implements Listener{
                 file_put_contents($this->path . "SpawnerData.yml", yaml_emit(self::$spawnerData, YAML_UTF8_ENCODING));
             }
 
+            for($a = 10; $a <= 13; $a++){
+                $item = Item::get(Item::SPAWN_EGG, $a);
+                if(!Item::isCreativeItem($item)) Item::addCreativeItem($item);
+            }
+            for($a = 32; $a <= 38; $a++){
+                $item = Item::get(Item::SPAWN_EGG, $a);
+                if(!Item::isCreativeItem($item)) Item::addCreativeItem($item);
+            }
+
             self::core()->getPluginManager()->registerEvents($this, $this);
             self::core()->getLogger()->info(TextFormat::GOLD . "[EntityManager]플러그인이 활성화 되었습니다");
             self::core()->getScheduler()->scheduleRepeatingTask(new CallbackTask([$this, "updateEntity"]), 1);
@@ -116,11 +125,11 @@ class EntityManager extends PluginBase implements Listener{
     }
 
     /**
-     * @param mixed $level
+     * @param Level $level
      *
      * @return Animal[]|Monster[]
      */
-    public static function getEntities($level = null){
+    public static function getEntities(Level $level = null){
         if(!self::$isLoaded) return [];
         $entities = [];
         $level = $level instanceof Level ? $level : self::core()->getDefaultLevel();
@@ -137,13 +146,15 @@ class EntityManager extends PluginBase implements Listener{
      * @return bool
      */
     public static function clearEntity(Level $level = null, $type = null){
-        if(!self::$isLoaded) return false;
-        $type = $type === null ? [Animal::class, Monster::class] : $type;
-        if(!is_array($type) || count($type) === 0) return false;
+        if(!self::$isLoaded || !is_array($type)) return false;
+        $type = count($type) === 0 ? [Animal::class, Monster::class] : $type;
         $level = $level === null ? self::core()->getDefaultLevel() : $level;
         foreach($level->getEntities() as $id => $ent){
-            if(in_array(get_class($ent), $type)){
-                $ent->close();
+            foreach($type as $t){
+                if(is_a(get_class($ent), $t, true)){
+                    $ent->close();
+                    continue;
+                }
             }
         }
         return true;
@@ -318,14 +329,14 @@ class EntityManager extends PluginBase implements Listener{
         switch($cmd->getName()){
             case "제거":
                 self::clearEntity($i instanceof Player ? $i->getLevel() : null, [Animal::class, Monster::class, Arrow::class]);
-                $output .= "소환된 엔티티를 모두 제거했어요";
+                $output .= "몬스터, 동물, 화살을 모두 제거했어요";
                 break;
             case "체크":
-                if(!$i instanceof Player){
+                if($i instanceof Player){
+                    $output .= "Level \"{$i->getLevel()->getName()}\" 에 있는 엔티티 수: " . count(self::getEntities($i->getLevel()));
+                }else{
                     $level = self::core()->getDefaultLevel();
                     $output .= "Level \"{$level->getName()}\" 에 있는 엔티티 수: " . count(self::getEntities());
-                }else{
-                    $output .= "Level \"{$i->getLevel()->getName()}\" 에 있는 엔티티 수: " . count(self::getEntities($i->getLevel()));
                 }
                 break;
             case "스폰":
