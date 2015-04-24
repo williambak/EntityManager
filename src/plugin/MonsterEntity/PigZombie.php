@@ -23,6 +23,7 @@ class PigZombie extends Monster{
         $this->setDamage([0, 5, 9, 13]);
         $this->namedtag->id = new String("id", "PigZombie");
         $this->lastTick = microtime(true);
+        $this->fireProof = true;
         $this->created = true;
     }
 

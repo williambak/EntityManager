@@ -2,10 +2,12 @@
 
 namespace plugin\MonsterEntity;
 
+use pocketmine\entity\Effect;
 use pocketmine\entity\Entity;
 use pocketmine\entity\Monster as MonsterEntity;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
+use pocketmine\event\Timings;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Byte;
 use pocketmine\network\Network;
@@ -129,7 +131,7 @@ abstract class Monster extends MonsterEntity{
         }
         $pk = new EntityEventPacket();
         $pk->eid = $this->getId();
-        $pk->event = (int)$this->getHealth() <= 0 ? 3 : 2;
+        $pk->event = $this->dead ? 3 : 2;
         Server::broadcastPacket($this->hasSpawned, $pk->setChannel(Network::CHANNEL_WORLD_EVENTS));
     }
 
@@ -204,13 +206,50 @@ abstract class Monster extends MonsterEntity{
         return true;
     }
 
+    public function entityBaseTick($tickDiff = 1){
+        Timings::$timerEntityBaseTick->startTiming();
+
+        if($this->dead) return false;
+        $hasUpdate = Entity::entityBaseTick($tickDiff);
+
+        if($this->isInsideOfSolid()){
+            $hasUpdate = true;
+            $ev = new EntityDamageEvent($this, EntityDamageEvent::CAUSE_SUFFOCATION, 1);
+            $this->attack($ev->getFinalDamage(), $ev);
+        }
+
+        if($this->isInsideOfWater()){
+            if($this instanceof Enderman){
+                $ev = new EntityDamageEvent($this, EntityDamageEvent::CAUSE_DROWNING, 2);
+                $this->attack($ev->getFinalDamage(), $ev);
+
+                $this->teleport($this->add(mt_rand(-20, 20), mt_rand(-20, 20), mt_rand(-20, 20)));
+            }elseif(!$this->hasEffect(Effect::WATER_BREATHING)){
+                $hasUpdate = true;
+                $airTicks = $this->getDataProperty(self::DATA_AIR) - $tickDiff;
+                if($airTicks <= -20){
+                    $airTicks = 0;
+                    $ev = new EntityDamageEvent($this, EntityDamageEvent::CAUSE_DROWNING, 2);
+                    $this->attack($ev->getFinalDamage(), $ev);
+                }
+                $this->setDataProperty(self::DATA_AIR, self::DATA_TYPE_SHORT, $airTicks);
+            }
+        }else{
+            $this->setDataProperty(self::DATA_AIR, self::DATA_TYPE_SHORT, 300);
+        }
+
+        if($this->attackTime > 0) $this->attackTime -= $tickDiff;
+        Timings::$timerEntityBaseTick->stopTiming();
+        return $hasUpdate;
+    }
+
     /**
      * @return Player|Vector3
      */
     public function getTarget(){
-        if(!$this->isMovement())return new Vector3();
+        if(!$this->isMovement()) return new Vector3();
         if($this->stayTime > 0){
-            if($this->stayVec === null or mt_rand(1, 40) <= 4) $this->stayVec = $this->add(mt_rand(-10, 10), 0, mt_rand(-10, 10));
+            if($this->stayVec === null or (mt_rand(1, 100) <= 5 and $this->stayTime % 20 === 0)) $this->stayVec = $this->add(mt_rand(-10, 10), mt_rand(-3, 3), mt_rand(-10, 10));
             return $this->stayVec;
         }
         $target = null;
@@ -225,12 +264,12 @@ abstract class Monster extends MonsterEntity{
             }
         }
         if(($target === null || ($this instanceof PigZombie && !$this->isAngry())) && $this->stayTime <= 0 && mt_rand(1, 420) === 1){
-            $this->stayTime = mt_rand(82, 400);
+            $this->stayTime = mt_rand(100, 450);
             return $this->stayVec = $this->add(mt_rand(-10, 10), 0, mt_rand(-10, 10));
         }
         if((!$this instanceof PigZombie && $target instanceof Player) || ($this instanceof PigZombie && $this->isAngry() && $target instanceof Player)){
             return $target;
-        }elseif($this->moveTime >= mt_rand(650, 800) or ($target === null and !$this->target instanceof Vector3)){
+        }elseif($this->moveTime >= mt_rand(650, 800) or !$this->target instanceof Vector3){
             $this->moveTime = 0;
             $this->target = $this->add(mt_rand(-100, 100), 0, mt_rand(-100, 100));
         }

@@ -20,6 +20,7 @@ use pocketmine\entity\Arrow;
 use pocketmine\entity\Entity;
 use pocketmine\event\block\BlockBreakEvent;
 use pocketmine\event\entity\EntitySpawnEvent;
+use pocketmine\event\entity\ExplosionPrimeEvent;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerInteractEvent;
 use pocketmine\item\Item;
@@ -61,6 +62,10 @@ class EntityManager extends PluginBase implements Listener{
         Entity::registerEntity(Enderman::class);
     }
 
+    public function isPhar(){
+        return true;
+    }
+
     public function onEnable(){
         if($this->isPhar() === true){
             self::$isLoaded = true;
@@ -70,12 +75,17 @@ class EntityManager extends PluginBase implements Listener{
                 self::$entityData = yaml_parse($this->yaml($this->path . "EntityData.yml"));
             }else{
                 self::$entityData = [
-                    "entity-limit" => 45,
-                    "spawn-tick" => 150,
-                    "spawn-radius" => 25,
-                    "auto-spawn" => true,
-                    "spawn-mob" => true,
-                    "spawn-animal" => true,
+                    "entity" => [
+                        "autospawn" => true,
+                        "limit" => 45,
+                    ],
+                    "spawn" => [
+                        "mob" => true,
+                        "animal" => true,
+                        "tick" => 150,
+                        "radius" => 25
+                    ],
+                    "explode" => true,
                 ];
                 file_put_contents($this->path . "EntityData.yml", yaml_emit(self::$entityData, YAML_UTF8_ENCODING));
             }
@@ -110,14 +120,14 @@ class EntityManager extends PluginBase implements Listener{
     }
 
     /**
-     * @param Level $level
+     * @param mixed $level
      *
      * @return Animal[]|Monster[]
      */
-    public static function getEntities(Level $level = null){
+    public static function getEntities($level = null){
         if(!self::$isLoaded) return [];
         $entities = [];
-        $level = $level === null ? self::core()->getDefaultLevel() : $level;
+        $level = $level instanceof Level ? $level : self::core()->getDefaultLevel();
         foreach($level->getEntities() as $id => $ent){
             if($ent instanceof Animal or $ent instanceof Monster) $entities[$id] = $ent;
         }
@@ -165,7 +175,7 @@ class EntityManager extends PluginBase implements Listener{
      * @return Animal|Monster
      */
     public static function createEntity($type, Position $source, $isSpawn = true){
-        if(!self::$isLoaded || self::getData("entity-limit") <= count(self::getEntities())) return null;
+        if(!self::$isLoaded || self::getData("entity.limit") <= count(self::getEntities())) return null;
         $chunk = $source->getLevel()->getChunk($source->getX() >> 4, $source->getZ() >> 4, true);
         if($chunk === null or !$chunk->isGenerated()) return null;
         $nbt = new Compound("", [
@@ -185,10 +195,10 @@ class EntityManager extends PluginBase implements Listener{
             ]),
         ]);
         $entity = Entity::createEntity($type, $chunk, $nbt);
-        if($entity instanceof Animal && !self::getData("spawn-animal")){
+        if($entity instanceof Animal && !self::getData("spawn.animal")){
             $entity->close();
             return null;
-        }elseif($entity instanceof Monster && !self::getData("spawn-mob")){
+        }elseif($entity instanceof Monster && !self::getData("spawn.mob")){
             $entity->close();
             return null;
         }
@@ -197,7 +207,7 @@ class EntityManager extends PluginBase implements Listener{
     }
 
     public function updateEntity(){
-        if(++$this->tick >= self::getData("spawn-tick")){
+        if(++$this->tick >= self::getData("spawn.tick")){
             $this->tick = 0;
             foreach(self::$spawnerData as $pos => $data){
                 if(mt_rand(1, 4) > 1) continue;
@@ -218,10 +228,10 @@ class EntityManager extends PluginBase implements Listener{
                 ) continue;
                 self::createEntity($data["mob-list"][mt_rand(0, count($data["mob-list"]) - 1)], Position::fromObject($pos, $level));
             }
-            if(self::getData("auto-spawn")) foreach(self::core()->getOnlinePlayers() as $player){
+            if(self::getData("entity.autospawn")) foreach(self::core()->getOnlinePlayers() as $player){
                 if(mt_rand(0, 4) > 0) continue;
                 $level = $player->getLevel();
-                $rad = self::getData("spawn-radius");
+                $rad = self::getData("spawn.radius");
                 $pos = $player->add(mt_rand(-$rad, $rad), mt_rand(-$rad, $rad), mt_rand(-$rad, $rad))->floor();
                 $bb = $level->getBlock($pos)->getBoundingBox();
                 $bb1 = $level->getBlock($pos->add(0, 1))->getBoundingBox();
@@ -260,11 +270,11 @@ class EntityManager extends PluginBase implements Listener{
 
     public function EntitySpawnEvent(EntitySpawnEvent $ev){
         $entity = $ev->getEntity();
-        if($entity instanceof Animal && !self::getData("spawn-animal")){
+        if($entity instanceof Animal && !self::getData("spawn.animal")){
             $entity->close();
-        }elseif($entity instanceof Monster && !self::getData("spawn-mob")){
+        }elseif($entity instanceof Monster && !self::getData("spawn.mob")){
             $entity->close();
-        }elseif(self::getData("entity-limit") <= count(self::getEntities())){
+        }elseif(self::getData("entity.limit") <= count(self::getEntities())){
             $entity->close();
         }
     }
@@ -298,6 +308,12 @@ class EntityManager extends PluginBase implements Listener{
         if($ev->isCancelled()) return;
         $pos = $ev->getBlock();
         if(isset(self::$spawnerData["{$pos->x}:{$pos->y}:{$pos->z}"])) unset(self::$spawnerData["{$pos->x}:{$pos->y}:{$pos->z}"]);
+    }
+
+    public function a(ExplosionPrimeEvent $ev){
+        $mode = self::getData("explode");
+        if($mode === false) $ev->setCancelled();
+        elseif($mode === "entity") $ev->setBlockBreaking(false);
     }
 
     public function onCommand(CommandSender $i, Command $cmd, $label, array $sub){
