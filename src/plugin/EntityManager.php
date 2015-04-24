@@ -62,10 +62,6 @@ class EntityManager extends PluginBase implements Listener{
         Entity::registerEntity(Enderman::class);
     }
 
-    public function isPhar(){
-        return true;
-    }
-
     public function onEnable(){
         if($this->isPhar() === true){
             self::$isLoaded = true;
