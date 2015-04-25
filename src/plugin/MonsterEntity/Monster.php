@@ -2,12 +2,14 @@
 
 namespace plugin\MonsterEntity;
 
+use pocketmine\block\Water;
 use pocketmine\entity\Effect;
 use pocketmine\entity\Entity;
 use pocketmine\entity\Monster as MonsterEntity;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\Timings;
+use pocketmine\math\Math;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Byte;
 use pocketmine\network\Network;
@@ -53,6 +55,9 @@ abstract class Monster extends MonsterEntity{
         $this->movement = (bool) $value;
     }
 
+    /**
+     * @return int[]
+     */
     public function getDamage(){
         return $this->damage;
     }
@@ -112,8 +117,8 @@ abstract class Monster extends MonsterEntity{
         if($this->attacker instanceof Entity) return;
         if($this instanceof PigZombie
             && ($source->getCause() === EntityDamageEvent::CAUSE_FIRE
-            || $source->getCause() === EntityDamageEvent::CAUSE_FIRE_TICK
-            || $source->getCause() === EntityDamageEvent::CAUSE_LAVA)
+                || $source->getCause() === EntityDamageEvent::CAUSE_FIRE_TICK
+                || $source->getCause() === EntityDamageEvent::CAUSE_LAVA)
         ){
             $source->setCancelled();
         }
@@ -148,11 +153,10 @@ abstract class Monster extends MonsterEntity{
                 $this->move(0, 0);
                 $this->stayTime -= $tick;
                 if($this->stayTime <= 0) $this->stayVec = null;
-            }
-            else{
+            }else{
                 $add = $this instanceof PigZombie && $this->isAngry() ? 0.122 : 0.1;
                 if(!$this->onGround && $this->lastY !== null) $this->motionY -= $this->gravity;
-                $this->move(cos($atn) * $add * $tick, sin($atn) * $add * $tick, $this->motionY);
+                $this->move(cos($atn) * $add * $tick, sin($atn) * $add * $tick, $this->motionY * $tick);
             }
             $this->setRotation(rad2deg($atn - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
         }else{
@@ -219,13 +223,14 @@ abstract class Monster extends MonsterEntity{
             $this->attack($ev->getFinalDamage(), $ev);
         }
 
-        if($this->isInsideOfWater()){
-            if($this instanceof Enderman){
+        if($this instanceof Enderman){
+            if($this->level->getBlock(new Vector3(Math::floorFloat($this->x), Math::floorFloat($this->y), Math::floorFloat($this->z))) instanceof Water){
                 $ev = new EntityDamageEvent($this, EntityDamageEvent::CAUSE_DROWNING, 2);
                 $this->attack($ev->getFinalDamage(), $ev);
-
                 $this->teleport($this->add(mt_rand(-20, 20), mt_rand(-20, 20), mt_rand(-20, 20)));
-            }elseif(!$this->hasEffect(Effect::WATER_BREATHING)){
+            }
+        }else{
+            if(!$this->hasEffect(Effect::WATER_BREATHING) && $this->isInsideOfWater()){
                 $hasUpdate = true;
                 $airTicks = $this->getDataProperty(self::DATA_AIR) - $tickDiff;
                 if($airTicks <= -20){
@@ -234,9 +239,9 @@ abstract class Monster extends MonsterEntity{
                     $this->attack($ev->getFinalDamage(), $ev);
                 }
                 $this->setDataProperty(self::DATA_AIR, self::DATA_TYPE_SHORT, $airTicks);
+            }else{
+                $this->setDataProperty(self::DATA_AIR, self::DATA_TYPE_SHORT, 300);
             }
-        }else{
-            $this->setDataProperty(self::DATA_AIR, self::DATA_TYPE_SHORT, 300);
         }
 
         if($this->attackTime > 0) $this->attackTime -= $tickDiff;

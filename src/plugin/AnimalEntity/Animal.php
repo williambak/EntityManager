@@ -133,7 +133,7 @@ abstract class Animal extends AnimalEntity{
                 if($this->stayTime <= 0) $this->stayVec = null;
             }else{
                 if(!$this->onGround && $this->lastY !== null) $this->motionY -= $this->gravity;
-                $this->move(cos($atn) * 0.07 * $tick, sin($atn) * 0.07 * $tick, $this->motionY);
+                $this->move(cos($atn) * 0.07 * $tick, sin($atn) * 0.07 * $tick, $this->motionY * $tick);
             }
             $this->setRotation(rad2deg($atn - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
         }else{
@@ -216,7 +216,7 @@ abstract class Animal extends AnimalEntity{
         }
         $this->entityBaseTick($tick);
         $this->updateMovement();
-        $this->lastUpdate = microtime(true);
+        $this->lastTick = microtime(true);
     }
 
 }
