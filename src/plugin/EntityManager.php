@@ -62,6 +62,10 @@ class EntityManager extends PluginBase implements Listener{
         Entity::registerEntity(Enderman::class);
     }
 
+    public function isPhar(){
+        return parent::isPhar() && !is_file(self::core()->getDataPath() . "plugins/EntityManager/plugin.yml") && !is_dir(self::core()->getDataPath() . "plugins/EntityManager/src/");
+    }
+
     public function onEnable(){
         if($this->isPhar() === true){
             self::$isLoaded = true;
@@ -73,12 +77,12 @@ class EntityManager extends PluginBase implements Listener{
                 self::$entityData = [
                     "entity" => [
                         "autospawn" => true,
-                        "limit" => 45,
+                        "limit" => 60,
                     ],
                     "spawn" => [
                         "mob" => true,
                         "animal" => true,
-                        "tick" => 150,
+                        "tick" => 50,
                         "radius" => 25
                     ],
                     "explode" => true,
@@ -97,7 +101,7 @@ class EntityManager extends PluginBase implements Listener{
                 $item = Item::get(Item::SPAWN_EGG, $a);
                 if(!Item::isCreativeItem($item)) Item::addCreativeItem($item);
             }
-            for($a = 32; $a <= 38; $a++){
+            for($a = 32; $a <= 42; $a++){
                 $item = Item::get(Item::SPAWN_EGG, $a);
                 if(!Item::isCreativeItem($item)) Item::addCreativeItem($item);
             }
@@ -202,14 +206,9 @@ class EntityManager extends PluginBase implements Listener{
             ]),
         ]);
         $entity = Entity::createEntity($type, $chunk, $nbt);
-        if($entity instanceof Animal && !self::getData("spawn.animal")){
-            $entity->close();
-            return null;
-        }elseif($entity instanceof Monster && !self::getData("spawn.mob")){
-            $entity->close();
-            return null;
+        if($entity instanceof Entity && !$entity->closed && $isSpawn === true){
+            $entity->spawnToAll();
         }
-        if($entity instanceof Entity && $isSpawn === true) $entity->spawnToAll();
         return $entity;
     }
 
@@ -281,23 +280,25 @@ class EntityManager extends PluginBase implements Listener{
             $entity->close();
         }elseif($entity instanceof Monster && !self::getData("spawn.mob")){
             $entity->close();
-        }elseif(self::getData("entity.limit") <= count(self::getEntities())){
+        }elseif(
+            ($entity instanceof Animal ||$entity instanceof Monster)
+            && self::getData("entity.limit") <= count(self::getEntities())
+        ){
             $entity->close();
         }
     }
 
     public function PlayerInteractEvent(PlayerInteractEvent $ev){
         if(
-            ($ev->getAction() !== PlayerInteractEvent::RIGHT_CLICK_AIR && $ev->getAction() !== PlayerInteractEvent::RIGHT_CLICK_BLOCK)
-            || $ev->getFace() === 255
+            $ev->getFace() === 255
+            && ($ev->getAction() !== PlayerInteractEvent::RIGHT_CLICK_AIR && $ev->getAction() !== PlayerInteractEvent::RIGHT_CLICK_BLOCK)
         ) return;
         $item = $ev->getItem();
         $player = $ev->getPlayer();
         $pos = $ev->getBlock()->getSide($ev->getFace());
 
-        if($item->getId() === Item::SPAWN_EGG && $ev->getFace() !== 255){
-            $entity = self::createEntity($item->getDamage(), $pos);
-            if($entity !== null) $entity->spawnToAll();
+        if($item->getId() === Item::SPAWN_EGG){
+            self::createEntity($item->getDamage(), $pos);
             if($player->isSurvival()){
                 $item->count--;
                 $player->getInventory()->setItemInHand($item);
@@ -305,8 +306,11 @@ class EntityManager extends PluginBase implements Listener{
             $ev->setCancelled();
         }elseif($item->getId() === Item::MONSTER_SPAWNER){
             self::$spawnerData["{$pos->x}:{$pos->y}:{$pos->z}"] = [
-                "radius" => 4,
-                "mob-list" => ["Cow", "Pig", "Sheep", "Chicken", "Zombie", "Creeper", "Skeleton", "Spider", "PigZombie", "Enderman"],
+                "radius" => 5,
+                "mob-list" => [
+                    "Cow", "Pig", "Sheep", "Chicken",
+                    "Zombie", "Creeper", "Skeleton", "Spider", "PigZombie", "Enderman"
+                ],
             ];
         }
     }

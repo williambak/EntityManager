@@ -9,6 +9,7 @@ use pocketmine\entity\Monster as MonsterEntity;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\Timings;
+use pocketmine\level\Level;
 use pocketmine\math\Math;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Byte;
@@ -86,7 +87,7 @@ abstract class Monster extends MonsterEntity{
     }
 
     public function spawnTo(Player $player){
-        parent::spawnTo($player);
+        if(isset($this->hasSpawned[$player->getId()]) or !isset($player->usedChunks[Level::chunkHash($this->chunk->getX(), $this->chunk->getZ())])) return;
 
         $pk = new AddEntityPacket();
         $pk->eid = $this->getID();
@@ -101,6 +102,8 @@ abstract class Monster extends MonsterEntity{
         $pk->pitch = $this->pitch;
         $pk->metadata = $this->dataProperties;
         $player->dataPacket($pk);
+
+        $this->hasSpawned[$player->getId()] = $player;
     }
 
     public function updateMovement(){
