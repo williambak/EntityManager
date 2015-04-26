@@ -12,7 +12,8 @@ class Enderman extends Monster{
     const NETWORK_ID = 38;
 
     public $width = 0.7;
-    public $height = 2.8;
+    public $height = 2.91;
+    public $eyeHeight = 2.62;
 
     protected function initEntity(){
         parent::initEntity();

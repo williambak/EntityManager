@@ -12,9 +12,10 @@ use pocketmine\Player;
 class Creeper extends Monster implements Explosive{
     const NETWORK_ID = 33;
 
-    public $width = 0.72;
+    public $width = 0.82;
     public $length = 0.6;
     public $height = 1.8;
+    public $eyeHeight = 1.62;
 
     protected $bombTime = 0;
 

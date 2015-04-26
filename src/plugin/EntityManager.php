@@ -33,8 +33,9 @@ use pocketmine\nbt\tag\Double;
 use pocketmine\nbt\tag\Enum;
 use pocketmine\nbt\tag\Float;
 use pocketmine\Player;
+use pocketmine\plugin\Plugin;
 use pocketmine\plugin\PluginBase;
-use pocketmine\scheduler\CallbackTask;
+use pocketmine\scheduler\PluginTask;
 use pocketmine\Server;
 use pocketmine\utils\TextFormat;
 
@@ -108,7 +109,7 @@ class EntityManager extends PluginBase implements Listener{
 
             self::core()->getPluginManager()->registerEvents($this, $this);
             self::core()->getLogger()->info(TextFormat::GOLD . "[EntityManager]플러그인이 활성화 되었습니다");
-            self::core()->getScheduler()->scheduleRepeatingTask(new CallbackTask([$this, "updateEntity"]), 1);
+            self::core()->getScheduler()->scheduleRepeatingTask(new EntityManagerTask([$this, "updateEntity"], $this), 1);
         }else{
             self::core()->getLogger()->info(TextFormat::GOLD . "[EntityManager]플러그인을 Phar파일로 변환해주세요");
         }
@@ -369,6 +370,28 @@ class EntityManager extends PluginBase implements Listener{
         }
         $i->sendMessage($output);
         return true;
+    }
+
+}
+
+class EntityManagerTask extends PluginTask{
+
+    protected $callable;
+
+    public function __construct(callable $callable, Plugin $owner){
+        $this->callable = $callable;
+        $this->owner = $owner;
+    }
+
+    /**
+     * @return callable
+     */
+    public function getCallable(){
+        return $this->callable;
+    }
+
+    public function onRun($currentTicks){
+        call_user_func_array($this->callable, []);
     }
 
 }

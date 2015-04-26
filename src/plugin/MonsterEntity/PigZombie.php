@@ -14,6 +14,8 @@ class PigZombie extends Monster{
     public $width = 0.7;
     public $length = 0.6;
     public $height = 1.8;
+    public $eyeHeight = 1.62;
+
     private $angry = 0;
 
     protected function initEntity(){

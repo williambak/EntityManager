@@ -12,9 +12,10 @@ use pocketmine\Player;
 class Zombie extends Monster{
     const NETWORK_ID = 32;
 
-    public $width = 0.7;
+    public $width = 0.8;
     public $length = 0.4;
     public $height = 1.8;
+    public $eyeHeight = 1.62;
 
     protected function initEntity(){
         parent::initEntity();

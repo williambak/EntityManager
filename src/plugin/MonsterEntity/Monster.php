@@ -157,14 +157,21 @@ abstract class Monster extends MonsterEntity{
                 $this->stayTime -= $tick;
                 if($this->stayTime <= 0) $this->stayVec = null;
             }else{
-                $add = $this instanceof PigZombie && $this->isAngry() ? 0.122 : 0.1;
+                $speed = [
+                    Zombie::NETWORK_ID => 0.11,
+                    Creeper::NETWORK_ID => 0.09,
+                    Skeleton::NETWORK_ID => 0.1,
+                    Spider::NETWORK_ID => 0.113,
+                    PigZombie::NETWORK_ID => 0.115,
+                    Enderman::NETWORK_ID => 0.121
+                ];
+                $add = $this instanceof PigZombie && $this->isAngry() ? 0.132 : $speed[static::NETWORK_ID];
                 if(!$this->onGround && $this->lastY !== null) $this->motionY -= $this->gravity;
                 $this->move(cos($atn) * $add * $tick, sin($atn) * $add * $tick, $this->motionY * $tick);
             }
             $this->setRotation(rad2deg($atn - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
-        }else{
-            $this->move(0, 0);
         }
+        $this->updateMovement();
         return $target;
     }
 
@@ -258,7 +265,7 @@ abstract class Monster extends MonsterEntity{
     public function getTarget(){
         if(!$this->isMovement()) return new Vector3();
         if($this->stayTime > 0){
-            if($this->stayVec === null or (mt_rand(1, 100) <= 5 and $this->stayTime % 20 === 0)) $this->stayVec = $this->add(mt_rand(-10, 10), mt_rand(-3, 3), mt_rand(-10, 10));
+            if($this->stayVec === null or (mt_rand(1, 115) <= 3 and $this->stayTime % 20 === 0)) $this->stayVec = $this->add(mt_rand(-10, 10), mt_rand(-3, 3), mt_rand(-10, 10));
             return $this->stayVec;
         }
         $target = null;
@@ -274,7 +281,7 @@ abstract class Monster extends MonsterEntity{
         }
         if(($target === null || ($this instanceof PigZombie && !$this->isAngry())) && $this->stayTime <= 0 && mt_rand(1, 420) === 1){
             $this->stayTime = mt_rand(100, 450);
-            return $this->stayVec = $this->add(mt_rand(-10, 10), 0, mt_rand(-10, 10));
+            return $this->stayVec = $this->add(mt_rand(-10, 10), mt_rand(-3, 3), mt_rand(-10, 10));
         }
         if((!$this instanceof PigZombie && $target instanceof Player) || ($this instanceof PigZombie && $this->isAngry() && $target instanceof Player)){
             return $target;
