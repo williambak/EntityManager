@@ -8,6 +8,7 @@ use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Short;
 use pocketmine\nbt\tag\String;
 use pocketmine\Player;
+use pocketmine\item\Item as ItemItem;
 
 class Enderman extends Monster{
     const NETWORK_ID = 38;
@@ -67,9 +68,9 @@ class Enderman extends Monster{
     }
 
     public function getDrops(){
-        if($this->lastDamageCause instanceof EntityDamageByEntityEvent and $this->lastDamageCause->getEntity() instanceof Player){
-            $drops = [];
-            return $drops;
+    	$drops = [ ];
+        if($this->lastDamageCause instanceof EntityDamageByEntityEvent){
+            $drops [] = ItemItem::get(ItemItem::END_STONE, 0, 1);
         }
         return [];
     }

@@ -4,9 +4,11 @@ namespace plugin\AnimalEntity;
 
 use pocketmine\entity\Colorable;
 use pocketmine\item\Item;
+use pocketmine\item\Item as ItemItem;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\String;
 use pocketmine\Player;
+use pocketmine\event\entity\EntityDamageByEntityEvent;
 
 class Sheep extends Animal implements Colorable{
     const NETWORK_ID = 13;
@@ -56,5 +58,12 @@ class Sheep extends Animal implements Colorable{
             $this->target = new Vector3($this->x + mt_rand(-100, 100), $this->y, $this->z + mt_rand(-100,100));
         }
         return $this->target;
+    }
+    public function getDrops() {
+    	$drops = [ ];
+    	if ($this->lastDamageCause instanceof EntityDamageByEntityEvent) {
+    		$drops [] = ItemItem::get ( ItemItem::WOOL, mt_rand ( 0, 15 ), 1 );
+    	}
+    	return $drops;
     }
 }

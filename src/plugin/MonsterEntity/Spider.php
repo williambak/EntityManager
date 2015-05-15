@@ -5,6 +5,7 @@ namespace plugin\MonsterEntity;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\item\Item;
+use pocketmine\item\Item as ItemItem;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Short;
 use pocketmine\nbt\tag\String;
@@ -70,9 +71,9 @@ class Spider extends Monster{
 
     public function getDrops(){
         $cause = $this->lastDamageCause;
-        if($cause instanceof EntityDamageByEntityEvent and $cause->getEntity() instanceof Player){
+        if($cause instanceof EntityDamageByEntityEvent){
             return [
-                Item::get(Item::STRING, 0, mt_rand(0, 3))
+                ItemItem::get(ItemItem::STRING, 0, mt_rand(0, 3))
             ];
         }
         return [];

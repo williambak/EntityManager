@@ -8,6 +8,7 @@ use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityShootBowEvent;
 use pocketmine\event\entity\ProjectileLaunchEvent;
 use pocketmine\item\Item;
+use pocketmine\item\Item as ItemItem;
 use pocketmine\level\sound\LaunchSound;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Compound;
@@ -108,10 +109,10 @@ class Skeleton extends Monster implements ProjectileSource{
 
     public function getDrops(){
         $cause = $this->lastDamageCause;
-        if($cause instanceof EntityDamageByEntityEvent and $cause->getEntity() instanceof Player){
+        if($cause instanceof EntityDamageByEntityEvent){
             return [
-                Item::get(Item::BONE, 0, mt_rand(0, 2)),
-                Item::get(Item::ARROW, 0, mt_rand(0, 3)),
+                ItemItem::get(ItemItem::BONE, 0, mt_rand(0, 2)),
+                ItemItem::get(ItemItem::ARROW, 0, mt_rand(0, 3)),
             ];
         }
         return [];
