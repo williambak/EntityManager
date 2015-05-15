@@ -5,6 +5,7 @@ namespace plugin\MonsterEntity;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\item\Item;
+use pocketmine\item\Item as ItemItem;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Short;
 use pocketmine\nbt\tag\String;
@@ -67,19 +68,21 @@ class Zombie extends Monster{
         $this->updateMovement();
         $this->lastTick = microtime(true);
     }
-
-    public function getDrops(){
-        $cause = $this->lastDamageCause;
-        if($cause instanceof EntityDamageByEntityEvent and $cause->getEntity() instanceof Player){
-            $drops = [Item::get(Item::FEATHER, 0, 1)];
-            if(mt_rand(1, 200) >= 6) return $drops;
-            if(mt_rand(0, 1) === 0){
-                $drops[] = Item::get(Item::CARROT, 0, 1);
-            }else{
-                $drops[] = Item::get(Item::POTATO, 0, 1);
-            }
-            return $drops;
-        }
-        return [];
+	public function getDrops() {
+    	$drops = [ ];
+    	if ($this->lastDamageCause instanceof EntityDamageByEntityEvent) {
+    		switch (mt_rand ( 0, 2 )) {
+    			case 0 :
+    				$drops [] = ItemItem::get ( ItemItem::FEATHER, 0, 1 );
+    				break;
+    			case 1 :
+    				$drops [] = ItemItem::get ( ItemItem::CARROT, 0, 1 );
+    				break;
+    			case 2 :
+    				$drops [] = ItemItem::get ( ItemItem::POTATO, 0, 1 );
+    				break;
+    		}
+    	}
+    	return $drops;
     }
 }

@@ -3,9 +3,11 @@
 namespace plugin\AnimalEntity;
 
 use pocketmine\item\Item;
+use pocketmine\item\Item as ItemItem;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\String;
 use pocketmine\Player;
+use pocketmine\event\entity\EntityDamageByEntityEvent;
 
 class Cow extends Animal{
     const NETWORK_ID = 11;
@@ -54,5 +56,19 @@ class Cow extends Animal{
             $this->target = new Vector3($this->x + mt_rand(-100, 100), $this->y, $this->z + mt_rand(-100,100));
         }
         return $this->target;
+    }
+    public function getDrops() {
+    	$drops = [ ];
+    	if ($this->lastDamageCause instanceof EntityDamageByEntityEvent) {
+    		switch (mt_rand ( 0, 1 )) {
+    			case 0 :
+    				$drops [] = ItemItem::get ( ItemItem::RAW_BEEF, 0, 1 );
+    				break;
+    			case 1 :
+    				$drops [] = ItemItem::get ( ItemItem::LEATHER, 0, 1 );
+    				break;
+    		}
+    	}
+    	return $drops;
     }
 }

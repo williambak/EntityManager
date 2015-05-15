@@ -9,6 +9,7 @@ use pocketmine\Player;
 use pocketmine\nbt\tag\String;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
+use pocketmine\item\Item as ItemItem;
 
 class PigZombie extends Monster{
     const NETWORK_ID = 36;
@@ -98,5 +99,21 @@ class PigZombie extends Monster{
         }
         return [];
     }
-
+    public function getDrops() {
+    	$drops = [ ];
+    	if ($this->lastDamageCause instanceof EntityDamageByEntityEvent) {
+    		switch (mt_rand ( 0, 2 )) {
+    			case 0 :
+    				$drops [] = ItemItem::get ( ItemItem::FLINT, 0, 1 );
+    				break;
+    			case 1 :
+    				$drops [] = ItemItem::get ( ItemItem::GUNPOWDER, 0, 1 );
+    				break;
+    			case 2 :
+    				$drops [] = ItemItem::get ( ItemItem::REDSTONE_DUST, 0, 1 );
+    				break;
+    		}
+    	}
+    	return $drops;
+    }
 }
