@@ -19,6 +19,7 @@ use pocketmine\command\CommandSender;
 use pocketmine\entity\Arrow;
 use pocketmine\entity\Entity;
 use pocketmine\event\block\BlockBreakEvent;
+use pocketmine\event\entity\EntityDespawnEvent;
 use pocketmine\event\entity\EntitySpawnEvent;
 use pocketmine\event\entity\ExplosionPrimeEvent;
 use pocketmine\event\Listener;
@@ -49,26 +50,23 @@ class EntityManager extends PluginBase implements Listener{
     public static $spawnerData;
     public static $isLoaded = false;
 
-    public function __construct(){
-        Entity::registerEntity(Cow::class);
-        Entity::registerEntity(Pig::class);
-        Entity::registerEntity(Sheep::class);
-        Entity::registerEntity(Chicken::class);
+    private static $entities = [];
+    private static $knownEntities = [];
 
-        Entity::registerEntity(Zombie::class);
-        Entity::registerEntity(Creeper::class);
-        Entity::registerEntity(Skeleton::class);
-        Entity::registerEntity(Spider::class);
-        Entity::registerEntity(PigZombie::class);
-        Entity::registerEntity(Enderman::class);
+    public function __construct(){
+        if($this->isPhar()){
+            self::registerEntity();
+        }
     }
 
     public function isPhar(){
-        return parent::isPhar() && !is_file(self::core()->getDataPath() . "plugins/EntityManager/plugin.yml") && !is_dir(self::core()->getDataPath() . "plugins/EntityManager/src/");
+        return !is_dir(self::core()->getDataPath() . "plugins/EntityManager/src/")
+            && !is_file(self::core()->getDataPath() . "plugins/EntityManager/plugin.yml")
+            && !is_file(self::core()->getDataPath() . "plugins/EntityManager/src/EntityManager.php");
     }
 
     public function onEnable(){
-        if($this->isPhar() === true){
+        if(parent::isPhar() === true){
             self::$isLoaded = true;
             $this->path = self::core()->getDataPath() . "plugins/EntityManager/";
             if(!is_dir($this->path)) mkdir($this->path);
@@ -130,18 +128,11 @@ class EntityManager extends PluginBase implements Listener{
     }
 
     /**
-     * @param Level $level
-     *
      * @return Animal[]|Monster[]
      */
-    public static function getEntities(Level $level = null){
+    public static function getEntities(){
         if(!self::$isLoaded) return [];
-        $entities = [];
-        $level = $level instanceof Level ? $level : self::core()->getDefaultLevel();
-        foreach($level->getEntities() as $id => $ent){
-            if($ent instanceof Animal or $ent instanceof Monster) $entities[$id] = $ent;
-        }
-        return $entities;
+        return self::$entities;
     }
 
     /**
@@ -206,11 +197,34 @@ class EntityManager extends PluginBase implements Listener{
                 new Float("", $source instanceof Location ? $source->pitch : 0)
             ]),
         ]);
-        $entity = Entity::createEntity($type, $chunk, $nbt);
-        if($entity instanceof Entity && !$entity->closed && $isSpawn === true){
-            $entity->spawnToAll();
+        if(isset(self::$knownEntities[$type])){
+            $class = self::$knownEntities[$type];
+            /** @var Monster|Animal $entity */
+            $entity =  new $class($chunk, $nbt);
+            if($entity !== null && $entity->isCreated() && $isSpawn === true) $entity->spawnToAll();
         }
-        return $entity;
+        return null;
+    }
+
+    public static function registerEntity(){
+        $classes = [
+            Cow::class,
+            Pig::class,
+            Sheep::class,
+            Chicken::class,
+
+            Zombie::class,
+            Creeper::class,
+            Skeleton::class,
+            Spider::class,
+            PigZombie::class,
+            Enderman::class
+        ];
+        foreach($classes as $name){
+            $class = new \ReflectionClass($name);
+            self::$knownEntities[$name::NETWORK_ID] = $name;
+            self::$knownEntities[$class->getShortName()] = $name;
+        }
     }
 
     public function updateEntity(){
@@ -287,6 +301,14 @@ class EntityManager extends PluginBase implements Listener{
         ){
             $entity->close();
         }
+        if(!$entity->closed && ($entity instanceof Animal ||$entity instanceof Monster)) self::$entities[$entity->getId()] = $entity;
+    }
+
+    public function EntityDespawnEvent(EntityDespawnEvent $ev){
+        $entity = $ev->getEntity();
+        if($entity instanceof Animal or $entity instanceof Monster){
+            unset(self::$entities[$entity->getId()]);
+        }
     }
 
     public function PlayerInteractEvent(PlayerInteractEvent $ev){
@@ -334,15 +356,10 @@ class EntityManager extends PluginBase implements Listener{
         switch($cmd->getName()){
             case "제거":
                 self::clearEntity($i instanceof Player ? $i->getLevel() : null, [Animal::class, Monster::class, Arrow::class]);
-                $output .= "몬스터, 동물, 화살을 모두 제거했어요";
+                $output .= "소환된 엔티티를 모두 제거했어요";
                 break;
             case "체크":
-                if($i instanceof Player){
-                    $output .= "Level \"{$i->getLevel()->getName()}\" 에 있는 엔티티 수: " . count(self::getEntities($i->getLevel()));
-                }else{
-                    $level = self::core()->getDefaultLevel();
-                    $output .= "Level \"{$level->getName()}\" 에 있는 엔티티 수: " . count(self::getEntities());
-                }
+                $output .= "현재 소환된 모든 엔티티 수: " . count(self::getEntities());
                 break;
             case "스폰":
                 if(!is_numeric($sub[0]) and gettype($sub[0]) !== "string"){

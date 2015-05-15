@@ -6,23 +6,35 @@ use pocketmine\entity\Explosive;
 use pocketmine\event\entity\ExplosionPrimeEvent;
 use pocketmine\level\Explosion;
 use pocketmine\math\Vector3;
+use pocketmine\nbt\tag\Int;
+use pocketmine\nbt\tag\Short;
 use pocketmine\nbt\tag\String;
 use pocketmine\Player;
 
 class Creeper extends Monster implements Explosive{
     const NETWORK_ID = 33;
 
-    public $width = 0.82;
-    public $length = 0.6;
+    public $width = 0.72;
     public $height = 1.8;
     public $eyeHeight = 1.62;
 
-    protected $bombTime = 0;
+    private $bombTime = 0;
 
     protected function initEntity(){
         parent::initEntity();
-        $this->namedtag->id = new String("id", "Creeper");
+
         $this->lastTick = microtime(true);
+        if(!isset($this->namedtag->id)){
+            $this->namedtag->id = new String("id", "Creeper");
+        }
+        if(!isset($this->namedtag->Health)){
+            $this->namedtag->Health = new Short("Health", $this->getMaxHealth());
+        }
+        if(!isset($this->namedtag->BombTime)){
+            $this->namedtag->BombTime = new Int("BombTime", $this->bombTime);
+        }
+        $this->setHealth($this->namedtag["Health"]);
+        $this->bombTime = (int) $this->namedtag["BombTime"];
         $this->created = true;
     }
 
@@ -45,9 +57,9 @@ class Creeper extends Monster implements Explosive{
 
     public function updateTick(){
         $tick = (microtime(true) - $this->lastTick) * 20;
-        if($this->dead === true){
-            $this->knockBackCheck($tick);
-            if(++$this->deadTicks >= 25) $this->close();
+        if(!$this->isAlive()){
+            $this->deadTicks += $tick;
+            if($this->deadTicks >= 25) $this->close();
             return;
         }
 

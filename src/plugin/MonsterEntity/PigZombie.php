@@ -3,6 +3,8 @@
 namespace plugin\MonsterEntity;
 
 use pocketmine\math\Vector3;
+use pocketmine\nbt\tag\Int;
+use pocketmine\nbt\tag\Short;
 use pocketmine\Player;
 use pocketmine\nbt\tag\String;
 use pocketmine\event\entity\EntityDamageEvent;
@@ -11,7 +13,7 @@ use pocketmine\event\entity\EntityDamageByEntityEvent;
 class PigZombie extends Monster{
     const NETWORK_ID = 36;
 
-    public $width = 0.7;
+    public $width = 0.72;
     public $length = 0.6;
     public $height = 1.8;
     public $eyeHeight = 1.62;
@@ -20,13 +22,28 @@ class PigZombie extends Monster{
 
     protected function initEntity(){
         parent::initEntity();
-        $this->setMaxHealth(22);
-        $this->setHealth(22);
-        $this->setDamage([0, 5, 9, 13]);
-        $this->namedtag->id = new String("id", "PigZombie");
-        $this->lastTick = microtime(true);
+
         $this->fireProof = true;
+        $this->setMaxHealth(22);
+        $this->setDamage([0, 5, 9, 13]);
+        $this->lastTick = microtime(true);
+        if(!isset($this->namedtag->id)){
+            $this->namedtag->id = new String("id", "Creeper");
+        }
+        if(!isset($this->namedtag->Angry)){
+            $this->namedtag->Angry = new Int("Angry", $this->angry);
+        }
+        if(!isset($this->namedtag->Health)){
+            $this->namedtag->Health = new Short("Health", $this->getMaxHealth());
+        }
+        $this->setHealth($this->namedtag["Health"]);
+        $this->angry = (int) $this->namedtag["Angry"];
         $this->created = true;
+    }
+
+    public function saveNBT(){
+        parent::saveNBT();
+        $this->namedtag->Angry = new Int("Angry", $this->angry);
     }
 
     public function getName(){
@@ -34,7 +51,7 @@ class PigZombie extends Monster{
     }
 
     public function isAngry(){
-        return (int) $this->angry > 0;
+        return $this->angry > 0;
     }
 
     public function setAngry($val){
@@ -43,9 +60,9 @@ class PigZombie extends Monster{
 
     public function updateTick(){
         $tick = (microtime(true) - $this->lastTick) * 20;
-        if($this->dead === true){
-            $this->knockBackCheck($tick);
-            if(++$this->deadTicks >= 25) $this->close();
+        if(!$this->isAlive()){
+            $this->deadTicks += $tick;
+            if($this->deadTicks >= 25) $this->close();
             return;
         }
 

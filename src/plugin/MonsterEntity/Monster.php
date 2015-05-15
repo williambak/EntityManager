@@ -2,6 +2,7 @@
 
 namespace plugin\MonsterEntity;
 
+use pocketmine\block\Block;
 use pocketmine\block\Water;
 use pocketmine\entity\Effect;
 use pocketmine\entity\Entity;
@@ -10,6 +11,7 @@ use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\Timings;
 use pocketmine\level\Level;
+use pocketmine\math\AxisAlignedBB;
 use pocketmine\math\Math;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Byte;
@@ -74,7 +76,7 @@ abstract class Monster extends MonsterEntity{
     }
 
     protected function initEntity(){
-        parent::initEntity();
+        Entity::initEntity();
         if(!isset($this->namedtag->Movement)){
             $this->namedtag->Movement = new Byte("Movement", (int) $this->isMovement());
         }
@@ -140,7 +142,7 @@ abstract class Monster extends MonsterEntity{
         }
         $pk = new EntityEventPacket();
         $pk->eid = $this->getId();
-        $pk->event = $this->dead ? 3 : 2;
+        $pk->event = !$this->isAlive() ? 3 : 2;
         Server::broadcastPacket($this->hasSpawned, $pk->setChannel(Network::CHANNEL_WORLD_EVENTS));
     }
 
@@ -175,23 +177,77 @@ abstract class Monster extends MonsterEntity{
         return $target;
     }
 
+    public function getCollisionCubes(AxisAlignedBB $bb){
+        $minX = (int) ($bb->minX);
+        $minY = (int) ($bb->minY);
+        $minZ = (int) ($bb->minZ);
+        $maxX = (int) ($bb->maxX + 1);
+        $maxY = (int) ($bb->maxY + 1);
+        $maxZ = (int) ($bb->maxZ + 1);
+
+        $collides = [];
+        $v = new Vector3();
+        for($v->z = $minZ; $v->z <= $maxZ; ++$v->z){
+            for($v->x = $minX; $v->x <= $maxX; ++$v->x){
+                for($v->y = $minY - 1; $v->y <= $maxY; ++$v->y){
+                    $block = $this->level->getBlock($v);
+                    if($block->getBoundingBox() !== null) $collides[] = $block;
+                }
+            }
+        }
+
+        foreach($this->level->getCollidingEntities($bb->grow(0.25, 0.25, 0.25), $this) as $ent){
+            $collides[] = $ent;
+        }
+
+        return $collides;
+    }
+
     public function move($dx, $dz, $dy = 0){
         $movX = $dx;
         $movY = $dy;
         $movZ = $dz;
-        $list = $this->level->getCollisionCubes($this, $this->boundingBox->getOffsetBoundingBox($dx, $dy, $dz));
-        foreach($list as $bb){
-            $dy = $bb->calculateYOffset($this->boundingBox, $dy);
+        $list = $this->getCollisionCubes($this->boundingBox->getOffsetBoundingBox($dx, $dy, $dz));
+        foreach($list as $target){
+            if(!$target instanceof Block && !$target instanceof Entity) continue;
+            $bb = $target->getBoundingBox();
+            $minY = (int) $this->boundingBox->minY;
+            if(in_array($bb->minY, [$minY, $minY + 1, $minY + 2])){
+                if($this->boundingBox->maxZ > $bb->minZ && $this->boundingBox->minZ < $bb->maxZ){
+                    if($this->boundingBox->maxX + $dx >= $bb->minX and $this->boundingBox->maxX <= $bb->minX){
+                        if(($x1 = $bb->minX - ($this->boundingBox->maxX + $dx)) < 0) $dx += $x1;
+                    }
+                    if($this->boundingBox->minX + $dx <= $bb->maxX and $this->boundingBox->minX >= $bb->maxX){
+                        if(($x1 = $bb->maxX - ($this->boundingBox->minX + $dx)) > 0) $dx += $x1;
+                    }
+                }
+                if($this->boundingBox->maxX > $bb->minX && $this->boundingBox->minX < $bb->maxX){
+                    if($this->boundingBox->maxZ + $dz >= $bb->minZ and $this->boundingBox->maxZ <= $bb->minZ){
+                        if(($z1 = $bb->minZ - ($this->boundingBox->maxZ + $dz)) < 0) $dz += $z1;
+                    }
+                    if($this->boundingBox->minZ + $dz <= $bb->maxZ and $this->boundingBox->minZ >= $bb->maxZ){
+                        if(($z1 = $bb->maxZ - ($this->boundingBox->minZ + $dz)) > 0) $dz += $z1;
+                    }
+                }
+                if($target instanceof Block && $minY + 1 === $bb->maxY && $dy === 0){
+                    $dy = 0.3;
+                }
+            }
+            if(
+                $this->boundingBox->maxX > $bb->minX
+                and $this->boundingBox->minX < $bb->maxX
+                and $this->boundingBox->maxZ > $bb->minZ
+                and $this->boundingBox->minZ < $bb->maxZ
+            ){
+                if($this->boundingBox->maxY + $dy >= $bb->minY and $this->boundingBox->maxY <= $bb->minY){
+                    if(($y1 = $bb->minY - ($this->boundingBox->maxY + $dy)) < 0) $dy += $y1;
+                }
+                if($this->boundingBox->minY + $dy <= $bb->maxY and $this->boundingBox->minY >= $bb->maxY){
+                    if(($y1 = $bb->maxY - ($this->boundingBox->minY + $dy)) > 0) $dy += $y1;
+                }
+            }
         }
-        $this->boundingBox->offset(0, $dy, 0);
-        foreach($list as $bb){
-            $dx = $bb->calculateXOffset($this->boundingBox, $dx);
-        }
-        $this->boundingBox->offset($dx, 0, 0);
-        foreach($list as $bb){
-            $dz = $bb->calculateZOffset($this->boundingBox, $dz);
-        }
-        $this->boundingBox->offset(0, 0, $dz);
+        $this->boundingBox->offset($dx, $dy, $dz);
         $this->setComponents($this->x + $dx, $this->y + $dy, $this->z + $dz);
 
         $this->updateFallState($dy, $this->onGround = ($movY != $dy and $movY < 0));
@@ -203,7 +259,7 @@ abstract class Monster extends MonsterEntity{
     }
 
     public function knockBackCheck($tick = 1){
-        if(!$this->attacker instanceof Entity) return false;
+        if(!$this->isAlive() || !$this->attacker instanceof Entity) return false;
 
         if($this->moveTime > 5) $this->moveTime = 5;
         $this->moveTime -= $tick;
@@ -224,7 +280,7 @@ abstract class Monster extends MonsterEntity{
     public function entityBaseTick($tickDiff = 1){
         Timings::$timerEntityBaseTick->startTiming();
 
-        if($this->dead) return false;
+        if(!$this->isAlive()) return false;
         $hasUpdate = Entity::entityBaseTick($tickDiff);
 
         if($this->isInsideOfSolid()){
@@ -271,7 +327,7 @@ abstract class Monster extends MonsterEntity{
         $target = null;
         $nearDistance = PHP_INT_MAX;
         foreach($this->getViewers() as $p){
-            if($p->spawned and !$p->dead and !$p->closed and $p->isSurvival() and ($distance = $this->distanceSquared($p)) <= 81){
+            if($p->spawned and $p->isAlive() and !$p->closed and $p->isSurvival() and ($distance = $this->distanceSquared($p)) <= 81){
                 if($distance < $nearDistance){
                     $target = $p;
                     $nearDistance = $distance;
@@ -291,4 +347,10 @@ abstract class Monster extends MonsterEntity{
         }
         return $this->target;
     }
+
+    public function close(){
+        $this->created = false;
+        parent::close();
+    }
+
 }

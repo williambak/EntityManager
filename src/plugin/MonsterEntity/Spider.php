@@ -6,6 +6,7 @@ use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\item\Item;
 use pocketmine\math\Vector3;
+use pocketmine\nbt\tag\Short;
 use pocketmine\nbt\tag\String;
 use pocketmine\Player;
 
@@ -18,10 +19,17 @@ class Spider extends Monster{
 
     protected function initEntity(){
         parent::initEntity();
+
         $this->setMaxHealth(16);
         $this->setDamage([0, 2, 2, 3]);
-        $this->namedtag->id = new String("id", "Spider");
         $this->lastTick = microtime(true);
+        if(!isset($this->namedtag->id)){
+            $this->namedtag->id = new String("id", "Enderman");
+        }
+        if(!isset($this->namedtag->Health)){
+            $this->namedtag->Health = new Short("Health", $this->getMaxHealth());
+        }
+        $this->setHealth($this->namedtag["Health"]);
         $this->created = true;
     }
 
@@ -31,9 +39,9 @@ class Spider extends Monster{
 
     public function updateTick(){
         $tick = (microtime(true) - $this->lastTick) * 20;
-        if($this->dead === true){
-            $this->knockBackCheck($tick);
-            if(++$this->deadTicks >= 25) $this->close();
+        if(!$this->isAlive()){
+            $this->deadTicks += $tick;
+            if($this->deadTicks >= 25) $this->close();
             return;
         }
 

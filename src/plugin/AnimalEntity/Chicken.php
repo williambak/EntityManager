@@ -28,14 +28,14 @@ class Chicken extends Animal{
     public function getTarget(){
         if(!$this->isMovement()) return new Vector3();
         if($this->stayTime > 0){
-            if($this->stayVec === null or mt_rand(1, 40) <= 4) $this->stayVec = $this->add(mt_rand(-10, 10), 0, mt_rand(-10, 10));
+            if($this->stayVec === null or (mt_rand(1, 115) <= 3 and $this->stayTime % 20 === 0)) $this->stayVec = $this->add(mt_rand(-10, 10), mt_rand(-3, 3), mt_rand(-10, 10));
             return $this->stayVec;
         }
         $target = null;
         $nearDistance = PHP_INT_MAX;
         foreach($this->hasSpawned as $p){
             $slot = $p->getInventory()->getItemInHand();
-            if(($distance = $this->distanceSquared($p)) <= 36 and $p->spawned and $p->dead == false and !$p->closed){
+            if(($distance = $this->distanceSquared($p)) <= 36 and $p->spawned and $p->isAlive() and !$p->closed){
                 if($distance < $nearDistance && $slot->getID() == Item::SEEDS){
                     $target = $p;
                     $nearDistance = $distance;

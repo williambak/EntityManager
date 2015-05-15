@@ -6,22 +6,30 @@ use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\item\Item;
 use pocketmine\math\Vector3;
+use pocketmine\nbt\tag\Short;
 use pocketmine\nbt\tag\String;
 use pocketmine\Player;
 
 class Zombie extends Monster{
     const NETWORK_ID = 32;
 
-    public $width = 0.8;
+    public $width = 0.72;
     public $length = 0.4;
     public $height = 1.8;
     public $eyeHeight = 1.62;
 
     protected function initEntity(){
         parent::initEntity();
+
         $this->setDamage([0, 3, 4, 6]);
-        $this->namedtag->id = new String("id", "Zombie");
         $this->lastTick = microtime(true);
+        if(!isset($this->namedtag->id)){
+            $this->namedtag->id = new String("id", "Enderman");
+        }
+        if(!isset($this->namedtag->Health)){
+            $this->namedtag->Health = new Short("Health", $this->getMaxHealth());
+        }
+        $this->setHealth($this->namedtag["Health"]);
         $this->created = true;
     }
 
@@ -31,9 +39,9 @@ class Zombie extends Monster{
 
     public function updateTick(){
         $tick = (microtime(true) - $this->lastTick) * 20;
-        if($this->dead === true){
-            $this->knockBackCheck($tick);
-            if(++$this->deadTicks >= 25) $this->close();
+        if(!$this->isAlive()){
+            $this->deadTicks += $tick;
+            if($this->deadTicks >= 25) $this->close();
             return;
         }
 

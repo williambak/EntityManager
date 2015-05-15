@@ -14,20 +14,28 @@ use pocketmine\nbt\tag\Compound;
 use pocketmine\nbt\tag\Double;
 use pocketmine\nbt\tag\Enum;
 use pocketmine\nbt\tag\Float;
+use pocketmine\nbt\tag\Short;
 use pocketmine\nbt\tag\String;
 use pocketmine\Player;
 
 class Skeleton extends Monster implements ProjectileSource{
     const NETWORK_ID = 34;
 
-    public $width = 0.58;
+    public $width = 0.64;
     public $length = 0.6;
     public $height = 1.8;
 
     protected function initEntity(){
         parent::initEntity();
-        $this->namedtag->id = new String("id", "Skeleton");
+
         $this->lastTick = microtime(true);
+        if(!isset($this->namedtag->id)){
+            $this->namedtag->id = new String("id", "Enderman");
+        }
+        if(!isset($this->namedtag->Health)){
+            $this->namedtag->Health = new Short("Health", $this->getMaxHealth());
+        }
+        $this->setHealth($this->namedtag["Health"]);
         $this->created = true;
     }
 
@@ -37,9 +45,9 @@ class Skeleton extends Monster implements ProjectileSource{
 
     public function updateTick(){
         $tick = (microtime(true) - $this->lastTick) * 20;
-        if($this->dead === true){
-            $this->knockBackCheck($tick);
-            if(++$this->deadTicks >= 25) $this->close();
+        if(!$this->isAlive()){
+            $this->deadTicks += $tick;
+            if($this->deadTicks >= 25) $this->close();
             return;
         }
 
