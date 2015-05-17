@@ -37,6 +37,13 @@ abstract class BaseEntity extends Creature{
 
     private $movement = true;
 
+    public abstract function updateTick();
+
+    /**
+     * @return Player|Vector3
+     */
+    public abstract function getTarget();
+
     public function getSaveId(){
         try{
             $class = new \ReflectionClass(static::class);

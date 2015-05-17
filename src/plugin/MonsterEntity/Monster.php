@@ -19,8 +19,6 @@ abstract class Monster extends BaseEntity{
 
     private $damage = [];
 
-    public abstract function updateTick();
-
     /**
      * @return int[]
      */
@@ -106,9 +104,6 @@ abstract class Monster extends BaseEntity{
         return $hasUpdate;
     }
 
-    /**
-     * @return Player|Vector3
-     */
     public function getTarget(){
         if(!$this->isMovement()) return new Vector3();
         if($this->stayTime > 0){

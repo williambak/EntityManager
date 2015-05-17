@@ -7,6 +7,7 @@ use plugin\AnimalEntity\Chicken;
 use plugin\AnimalEntity\Cow;
 use plugin\AnimalEntity\Pig;
 use plugin\AnimalEntity\Sheep;
+use plugin\AnotherEntity\BaseEntity;
 use plugin\AnotherEntity\Minecart;
 use plugin\MonsterEntity\Creeper;
 use plugin\MonsterEntity\Enderman;
@@ -49,11 +50,9 @@ class EntityManager extends PluginBase implements Listener{
 
     public static $entityData;
     public static $spawnerData;
-    public static $shortNames = [];
 
     private static $entities = [];
     private static $knownEntities = [];
-    private static $registerEntities = [];
 
     public function __construct(){
         $classes = [
@@ -129,7 +128,7 @@ class EntityManager extends PluginBase implements Listener{
     }
 
     /**
-     * @return Animal[]|Monster[]
+     * @return BaseEntity[]
      */
     public static function getEntities(){
         return self::$entities;
@@ -143,7 +142,7 @@ class EntityManager extends PluginBase implements Listener{
      */
     public static function clearEntity(Level $level = null, $type = []){
         if(!is_array($type)) return false;
-        $type = count($type) === 0 ? [Animal::class, Monster::class] : $type;
+        $type = count($type) === 0 ? [BaseEntity::class] : $type;
         $level = $level === null ? self::core()->getDefaultLevel() : $level;
         foreach($level->getEntities() as $id => $ent){
             foreach($type as $t){
@@ -172,11 +171,11 @@ class EntityManager extends PluginBase implements Listener{
     /**
      * @param int|string $type
      * @param Position $source
-     * @param bool $isSpawn
+     * @param $args
      *
-     * @return Animal|Monster
+     * @return BaseEntity
      */
-    public static function createEntity($type, Position $source, $isSpawn = true){
+    public static function createEntity($type, Position $source, ...$args){
         $chunk = $source->getLevel()->getChunk($source->getX() >> 4, $source->getZ() >> 4, true);
         if($chunk === null or !$chunk->isGenerated()) return null;
         $nbt = new Compound("", [
@@ -197,23 +196,22 @@ class EntityManager extends PluginBase implements Listener{
         ]);
         if(isset(self::$knownEntities[$type])){
             $class = self::$knownEntities[$type];
-            /** @var Monster|Animal $entity */
-            $entity =  new $class($chunk, $nbt);
-            if($entity !== null && $entity->isCreated() && $isSpawn === true) $entity->spawnToAll();
+            /** @var BaseEntity $entity */
+            $entity =  new $class($chunk, $nbt, ...$args);
+            if($entity !== null && $entity->isCreated()) $entity->spawnToAll();
+            return $entity;
         }
         return null;
     }
 
     public static function registerEntity($name){
         $class = new \ReflectionClass($name);
-        if(is_a($name, Entity::class, true) and !$class->isAbstract()){
+        if(is_a($name, BaseEntity::class, true) and !$class->isAbstract()){
             Entity::registerEntity($name, true);
             if($name::NETWORK_ID !== -1){
                 self::$knownEntities[$name::NETWORK_ID] = $name;
             }
-            self::$registerEntities[] = $name;
             self::$knownEntities[$class->getShortName()] = $name;
-            self::$shortNames[$name] = $class->getShortName();
         }
     }
 
@@ -286,7 +284,7 @@ class EntityManager extends PluginBase implements Listener{
         }elseif($entity instanceof Monster && !self::getData("spawn.mob")){
             $entity->close();
         }
-        if(!$entity->closed && in_array(get_class($entity), self::$registerEntities)) self::$entities[$entity->getId()] = $entity;
+        if(!$entity->closed && in_array(get_class($entity), [Minecart::class, BaseEntity::class])) self::$entities[$entity->getId()] = $entity;
     }
 
     public function EntityDespawnEvent(EntityDespawnEvent $ev){

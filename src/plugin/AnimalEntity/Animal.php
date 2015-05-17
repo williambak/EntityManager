@@ -3,17 +3,11 @@
 namespace plugin\AnimalEntity;
 
 use plugin\AnotherEntity\BaseEntity;
-use plugin\EntityManager;
 use pocketmine\entity\Ageable;
 use pocketmine\math\Vector3;
 use pocketmine\Player;
 
 abstract class Animal extends BaseEntity implements Ageable{
-
-    /**
-     * @return Player|Vector3
-     */
-    public abstract function getTarget();
 
     public function initEntity(){
         parent::initEntity();
@@ -24,10 +18,6 @@ abstract class Animal extends BaseEntity implements Ageable{
 
     public function isBaby(){
         return $this->getDataFlag(self::DATA_AGEABLE_FLAGS, self::DATA_FLAG_BABY);
-    }
-
-    public function getSaveId(){
-        return EntityManager::$shortNames[static::class];
     }
 
     public function updateMove($tick = 1){
