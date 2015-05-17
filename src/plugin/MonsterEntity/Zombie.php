@@ -5,10 +5,7 @@ namespace plugin\MonsterEntity;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\item\Item;
-use pocketmine\item\Item as ItemItem;
 use pocketmine\math\Vector3;
-use pocketmine\nbt\tag\Short;
-use pocketmine\nbt\tag\String;
 use pocketmine\Player;
 
 class Zombie extends Monster{
@@ -19,18 +16,11 @@ class Zombie extends Monster{
     public $height = 1.8;
     public $eyeHeight = 1.62;
 
-    protected function initEntity(){
+    public function initEntity(){
         parent::initEntity();
 
         $this->setDamage([0, 3, 4, 6]);
         $this->lastTick = microtime(true);
-        if(!isset($this->namedtag->id)){
-            $this->namedtag->id = new String("id", "Enderman");
-        }
-        if(!isset($this->namedtag->Health)){
-            $this->namedtag->Health = new Short("Health", $this->getMaxHealth());
-        }
-        $this->setHealth($this->namedtag["Health"]);
         $this->created = true;
     }
 
@@ -68,21 +58,23 @@ class Zombie extends Monster{
         $this->updateMovement();
         $this->lastTick = microtime(true);
     }
-	public function getDrops() {
-    	$drops = [ ];
-    	if ($this->lastDamageCause instanceof EntityDamageByEntityEvent) {
-    		switch (mt_rand ( 0, 2 )) {
-    			case 0 :
-    				$drops [] = ItemItem::get ( ItemItem::FEATHER, 0, 1 );
-    				break;
-    			case 1 :
-    				$drops [] = ItemItem::get ( ItemItem::CARROT, 0, 1 );
-    				break;
-    			case 2 :
-    				$drops [] = ItemItem::get ( ItemItem::POTATO, 0, 1 );
-    				break;
-    		}
-    	}
-    	return $drops;
+
+    public function getDrops(){
+        $drops = [];
+        if($this->lastDamageCause instanceof EntityDamageByEntityEvent){
+            switch(mt_rand(0, 2)){
+                case 0 :
+                    $drops [] = Item::get(Item::FEATHER, 0, 1);
+                    break;
+                case 1 :
+                    $drops [] = Item::get(Item::CARROT, 0, 1);
+                    break;
+                case 2 :
+                    $drops [] = Item::get(Item::POTATO, 0, 1);
+                    break;
+            }
+        }
+        return $drops;
     }
+
 }

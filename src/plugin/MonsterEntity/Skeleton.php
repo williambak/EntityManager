@@ -3,20 +3,18 @@
 namespace plugin\MonsterEntity;
 
 use pocketmine\entity\Entity;
+use pocketmine\entity\Projectile;
 use pocketmine\entity\ProjectileSource;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityShootBowEvent;
 use pocketmine\event\entity\ProjectileLaunchEvent;
 use pocketmine\item\Item;
-use pocketmine\item\Item as ItemItem;
 use pocketmine\level\sound\LaunchSound;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Compound;
 use pocketmine\nbt\tag\Double;
 use pocketmine\nbt\tag\Enum;
 use pocketmine\nbt\tag\Float;
-use pocketmine\nbt\tag\Short;
-use pocketmine\nbt\tag\String;
 use pocketmine\Player;
 
 class Skeleton extends Monster implements ProjectileSource{
@@ -26,17 +24,10 @@ class Skeleton extends Monster implements ProjectileSource{
     public $length = 0.6;
     public $height = 1.8;
 
-    protected function initEntity(){
+    public function initEntity(){
         parent::initEntity();
 
         $this->lastTick = microtime(true);
-        if(!isset($this->namedtag->id)){
-            $this->namedtag->id = new String("id", "Enderman");
-        }
-        if(!isset($this->namedtag->Health)){
-            $this->namedtag->Health = new Short("Health", $this->getMaxHealth());
-        }
-        $this->setHealth($this->namedtag["Health"]);
         $this->created = true;
     }
 
@@ -80,17 +71,21 @@ class Skeleton extends Monster implements ProjectileSource{
                     ]),
                 ]);
 
-                $ev = new EntityShootBowEvent($this, Item::get(Item::ARROW, 0, 1), Entity::createEntity("Arrow", $this->chunk, $nbt, $this), $f);
+                /** @var Projectile $arrow */
+                $arrow = Entity::createEntity("Arrow", $this->chunk, $nbt, $this);
+                $ev = new EntityShootBowEvent($this, Item::get(Item::ARROW, 0, 1), $arrow, $f);
 
                 $this->server->getPluginManager()->callEvent($ev);
+
+                $projectile = $ev->getProjectile();
                 if($ev->isCancelled()){
                     $ev->getProjectile()->kill();
-                }else{
-                    $this->server->getPluginManager()->callEvent($launch = new ProjectileLaunchEvent($ev->getProjectile()));
+                }elseif($projectile instanceof Projectile){
+                    $this->server->getPluginManager()->callEvent($launch = new ProjectileLaunchEvent($projectile));
                     if($launch->isCancelled()){
-                        $launch->getEntity()->kill();
+                        $projectile->kill();
                     }else{
-                        $launch->getEntity()->spawnToAll();
+                        $projectile->spawnToAll();
                         $this->level->addSound(new LaunchSound($this), $this->getViewers());
                     }
                 }
@@ -108,11 +103,10 @@ class Skeleton extends Monster implements ProjectileSource{
     }
 
     public function getDrops(){
-        $cause = $this->lastDamageCause;
-        if($cause instanceof EntityDamageByEntityEvent){
+        if($this->lastDamageCause instanceof EntityDamageByEntityEvent){
             return [
-                ItemItem::get(ItemItem::BONE, 0, mt_rand(0, 2)),
-                ItemItem::get(ItemItem::ARROW, 0, mt_rand(0, 3)),
+                Item::get(Item::BONE, 0, mt_rand(0, 2)),
+                Item::get(Item::ARROW, 0, mt_rand(0, 3)),
             ];
         }
         return [];

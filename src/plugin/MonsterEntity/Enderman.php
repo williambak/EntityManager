@@ -5,8 +5,6 @@ namespace plugin\MonsterEntity;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\math\Vector3;
-use pocketmine\nbt\tag\Short;
-use pocketmine\nbt\tag\String;
 use pocketmine\Player;
 use pocketmine\item\Item as ItemItem;
 
@@ -17,18 +15,11 @@ class Enderman extends Monster{
     public $height = 2.8;
     public $eyeHeight = 2.62;
 
-    protected function initEntity(){
+    public function initEntity(){
         parent::initEntity();
 
         $this->setDamage([0, 1, 2, 3]);
         $this->lastTick = microtime(true);
-        if(!isset($this->namedtag->id)){
-            $this->namedtag->id = new String("id", "Enderman");
-        }
-        if(!isset($this->namedtag->Health)){
-            $this->namedtag->Health = new Short("Health", $this->getMaxHealth());
-        }
-        $this->setHealth($this->namedtag["Health"]);
         $this->created = true;
     }
 
@@ -68,10 +59,11 @@ class Enderman extends Monster{
     }
 
     public function getDrops(){
-    	$drops = [ ];
+        $drops = [];
         if($this->lastDamageCause instanceof EntityDamageByEntityEvent){
             $drops [] = ItemItem::get(ItemItem::END_STONE, 0, 1);
         }
         return [];
     }
+
 }

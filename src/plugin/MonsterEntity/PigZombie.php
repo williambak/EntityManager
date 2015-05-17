@@ -4,12 +4,10 @@ namespace plugin\MonsterEntity;
 
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Int;
-use pocketmine\nbt\tag\Short;
 use pocketmine\Player;
-use pocketmine\nbt\tag\String;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
-use pocketmine\item\Item as ItemItem;
+use pocketmine\item\Item;
 
 class PigZombie extends Monster{
     const NETWORK_ID = 36;
@@ -21,30 +19,23 @@ class PigZombie extends Monster{
 
     private $angry = 0;
 
-    protected function initEntity(){
+    public function initEntity(){
         parent::initEntity();
 
         $this->fireProof = true;
         $this->setMaxHealth(22);
         $this->setDamage([0, 5, 9, 13]);
         $this->lastTick = microtime(true);
-        if(!isset($this->namedtag->id)){
-            $this->namedtag->id = new String("id", "Creeper");
-        }
         if(!isset($this->namedtag->Angry)){
             $this->namedtag->Angry = new Int("Angry", $this->angry);
         }
-        if(!isset($this->namedtag->Health)){
-            $this->namedtag->Health = new Short("Health", $this->getMaxHealth());
-        }
-        $this->setHealth($this->namedtag["Health"]);
         $this->angry = (int) $this->namedtag["Angry"];
         $this->created = true;
     }
 
     public function saveNBT(){
-        parent::saveNBT();
         $this->namedtag->Angry = new Int("Angry", $this->angry);
+        parent::saveNBT();
     }
 
     public function getName(){
@@ -79,10 +70,12 @@ class PigZombie extends Monster{
                 $ev = new EntityDamageByEntityEvent($this, $target, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $this->getDamage()[$this->server->getDifficulty()]);
                 $target->attack($ev->getFinalDamage(), $ev);
             }
-        }elseif($target instanceof Vector3){
+        }
+        elseif($target instanceof Vector3){
             if($this->distance($target) <= 1){
                 $this->moveTime = 800;
-            }elseif($this->x == $this->lastX or $this->z == $this->lastZ){
+            }
+            elseif($this->x == $this->lastX or $this->z == $this->lastZ){
                 $this->moveTime += 20;
             }
         }
@@ -92,28 +85,21 @@ class PigZombie extends Monster{
     }
 
     public function getDrops(){
-        $cause = $this->lastDamageCause;
-        if($cause instanceof EntityDamageByEntityEvent and $cause->getEntity() instanceof Player){
-            $drops = [];
-            return $drops;
+        $drops = [];
+        if($this->lastDamageCause instanceof EntityDamageByEntityEvent){
+            switch(mt_rand(0, 2)){
+                case 0 :
+                    $drops [] = Item::get(Item::FLINT, 0, 1);
+                    break;
+                case 1 :
+                    $drops [] = Item::get(Item::GUNPOWDER, 0, 1);
+                    break;
+                case 2 :
+                    $drops [] = Item::get(Item::REDSTONE_DUST, 0, 1);
+                    break;
+            }
         }
-        return [];
+        return $drops;
     }
-    public function getDrops() {
-    	$drops = [ ];
-    	if ($this->lastDamageCause instanceof EntityDamageByEntityEvent) {
-    		switch (mt_rand ( 0, 2 )) {
-    			case 0 :
-    				$drops [] = ItemItem::get ( ItemItem::FLINT, 0, 1 );
-    				break;
-    			case 1 :
-    				$drops [] = ItemItem::get ( ItemItem::GUNPOWDER, 0, 1 );
-    				break;
-    			case 2 :
-    				$drops [] = ItemItem::get ( ItemItem::REDSTONE_DUST, 0, 1 );
-    				break;
-    		}
-    	}
-    	return $drops;
-    }
+
 }

@@ -3,9 +3,7 @@
 namespace plugin\AnimalEntity;
 
 use pocketmine\item\Item;
-use pocketmine\item\Item as ItemItem;
 use pocketmine\math\Vector3;
-use pocketmine\nbt\tag\String;
 use pocketmine\Player;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 
@@ -21,8 +19,8 @@ class Cow extends Animal{
 
     public function initEntity(){
         parent::initEntity();
+
         $this->setMaxHealth(10);
-        $this->namedtag->id = new String("id", "Cow");
         $this->lastTick = microtime(true);
         $this->created = true;
     }
@@ -53,22 +51,23 @@ class Cow extends Animal{
             return $target;
         }elseif($this->moveTime >= mt_rand(400, 800) or ($target === null and !$this->target instanceof Vector3)){
             $this->moveTime = 0;
-            $this->target = new Vector3($this->x + mt_rand(-100, 100), $this->y, $this->z + mt_rand(-100,100));
+            $this->target = new Vector3($this->x + mt_rand(-100, 100), $this->y, $this->z + mt_rand(-100, 100));
         }
         return $this->target;
     }
-    public function getDrops() {
-    	$drops = [ ];
-    	if ($this->lastDamageCause instanceof EntityDamageByEntityEvent) {
-    		switch (mt_rand ( 0, 1 )) {
-    			case 0 :
-    				$drops [] = ItemItem::get ( ItemItem::RAW_BEEF, 0, 1 );
-    				break;
-    			case 1 :
-    				$drops [] = ItemItem::get ( ItemItem::LEATHER, 0, 1 );
-    				break;
-    		}
-    	}
-    	return $drops;
+
+    public function getDrops(){
+        $drops = [];
+        if($this->lastDamageCause instanceof EntityDamageByEntityEvent){
+            switch(mt_rand(0, 1)){
+                case 0 :
+                    $drops [] = Item::get(Item::RAW_BEEF, 0, 1);
+                    break;
+                case 1 :
+                    $drops [] = Item::get(Item::LEATHER, 0, 1);
+                    break;
+            }
+        }
+        return $drops;
     }
 }

@@ -4,9 +4,7 @@ namespace plugin\AnimalEntity;
 
 use pocketmine\entity\Colorable;
 use pocketmine\item\Item;
-use pocketmine\item\Item as ItemItem;
 use pocketmine\math\Vector3;
-use pocketmine\nbt\tag\String;
 use pocketmine\Player;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 
@@ -23,8 +21,8 @@ class Sheep extends Animal implements Colorable{
 
     public function initEntity(){
         parent::initEntity();
+
         $this->setMaxHealth(8);
-        $this->namedtag->id = new String("id", "Sheep");
         $this->lastTick = microtime(true);
         $this->created = true;
     }
@@ -55,15 +53,16 @@ class Sheep extends Animal implements Colorable{
             return $target;
         }elseif($this->moveTime >= mt_rand(400, 800) or ($target === null and !$this->target instanceof Vector3)){
             $this->moveTime = 0;
-            $this->target = new Vector3($this->x + mt_rand(-100, 100), $this->y, $this->z + mt_rand(-100,100));
+            $this->target = new Vector3($this->x + mt_rand(-100, 100), $this->y, $this->z + mt_rand(-100, 100));
         }
         return $this->target;
     }
-    public function getDrops() {
-    	$drops = [ ];
-    	if ($this->lastDamageCause instanceof EntityDamageByEntityEvent) {
-    		$drops [] = ItemItem::get ( ItemItem::WOOL, mt_rand ( 0, 15 ), 1 );
-    	}
-    	return $drops;
+
+    public function getDrops(){
+        if($this->lastDamageCause instanceof EntityDamageByEntityEvent){
+            return [Item::get(Item::WOOL, mt_rand(0, 15), 1)];
+        }
+        return [];
     }
+
 }

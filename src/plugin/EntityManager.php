@@ -7,6 +7,7 @@ use plugin\AnimalEntity\Chicken;
 use plugin\AnimalEntity\Cow;
 use plugin\AnimalEntity\Pig;
 use plugin\AnimalEntity\Sheep;
+use plugin\AnotherEntity\Minecart;
 use plugin\MonsterEntity\Creeper;
 use plugin\MonsterEntity\Enderman;
 use plugin\MonsterEntity\Monster;
@@ -48,78 +49,78 @@ class EntityManager extends PluginBase implements Listener{
 
     public static $entityData;
     public static $spawnerData;
-    public static $isLoaded = false;
+    public static $shortNames = [];
 
     private static $entities = [];
     private static $knownEntities = [];
+    private static $registerEntities = [];
 
     public function __construct(){
-        if($this->isPhar()){
-            self::registerEntity();
-        }
-    }
+        $classes = [
+            Cow::class,
+            Pig::class,
+            Sheep::class,
+            Chicken::class,
 
-    public function isPhar(){
-        return !is_dir(self::core()->getDataPath() . "plugins/EntityManager/src/")
-            && !is_file(self::core()->getDataPath() . "plugins/EntityManager/plugin.yml")
-            && !is_file(self::core()->getDataPath() . "plugins/EntityManager/src/EntityManager.php");
+            Zombie::class,
+            Creeper::class,
+            Skeleton::class,
+            Spider::class,
+            PigZombie::class,
+            Enderman::class,
+
+            Minecart::class
+        ];
+        foreach($classes as $name) self::registerEntity($name);
     }
 
     public function onEnable(){
-        if(parent::isPhar() === true){
-            self::$isLoaded = true;
-            $this->path = self::core()->getDataPath() . "plugins/EntityManager/";
-            if(!is_dir($this->path)) mkdir($this->path);
-            if(file_exists($this->path. "EntityData.yml")){
-                self::$entityData = yaml_parse($this->yaml($this->path . "EntityData.yml"));
-            }else{
-                self::$entityData = [
-                    "entity" => [
-                        "autospawn" => true,
-                        "limit" => 60,
-                    ],
-                    "spawn" => [
-                        "mob" => true,
-                        "animal" => true,
-                        "tick" => 50,
-                        "radius" => 25
-                    ],
-                    "explode" => true,
-                ];
-                file_put_contents($this->path . "EntityData.yml", yaml_emit(self::$entityData, YAML_UTF8_ENCODING));
-            }
-
-            if(file_exists($this->path. "SpawnerData.yml")){
-                self::$spawnerData = yaml_parse($this->yaml($this->path . "SpawnerData.yml"));
-            }else{
-                self::$spawnerData = [];
-                file_put_contents($this->path . "SpawnerData.yml", yaml_emit(self::$spawnerData, YAML_UTF8_ENCODING));
-            }
-
-            for($a = 10; $a <= 13; $a++){
-                $item = Item::get(Item::SPAWN_EGG, $a);
-                if(!Item::isCreativeItem($item)) Item::addCreativeItem($item);
-            }
-            for($a = 32; $a <= 42; $a++){
-                $item = Item::get(Item::SPAWN_EGG, $a);
-                if(!Item::isCreativeItem($item)) Item::addCreativeItem($item);
-            }
-
-            self::core()->getPluginManager()->registerEvents($this, $this);
-            self::core()->getLogger()->info(TextFormat::GOLD . "[EntityManager]플러그인이 활성화 되었습니다");
-            self::core()->getScheduler()->scheduleRepeatingTask(new EntityManagerTask([$this, "updateEntity"], $this), 1);
+        $this->path = self::core()->getDataPath() . "plugins/EntityManager/";
+        if(!is_dir($this->path)) mkdir($this->path);
+        if(file_exists($this->path. "EntityData.yml")){
+            self::$entityData = yaml_parse($this->yaml($this->path . "EntityData.yml"));
         }else{
-            self::core()->getLogger()->info(TextFormat::GOLD . "[EntityManager]플러그인을 Phar파일로 변환해주세요");
+            self::$entityData = [
+                "entity" => [
+                    "explode" => true,
+                ],
+                "spawn" => [
+                    "auto" => true,
+                    "mob" => true,
+                    "animal" => true,
+                    "tick" => 50,
+                    "radius" => 25
+                ],
+            ];
+            file_put_contents($this->path . "EntityData.yml", yaml_emit(self::$entityData, YAML_UTF8_ENCODING));
         }
+
+        if(file_exists($this->path. "SpawnerData.yml")){
+            self::$spawnerData = yaml_parse($this->yaml($this->path . "SpawnerData.yml"));
+        }else{
+            self::$spawnerData = [];
+            file_put_contents($this->path . "SpawnerData.yml", yaml_emit(self::$spawnerData, YAML_UTF8_ENCODING));
+        }
+
+        for($a = 10; $a <= 13; $a++){
+            $item = Item::get(Item::SPAWN_EGG, $a);
+            if(!Item::isCreativeItem($item)) Item::addCreativeItem($item);
+        }
+        for($a = 32; $a <= 42; $a++){
+            $item = Item::get(Item::SPAWN_EGG, $a);
+            if(!Item::isCreativeItem($item)) Item::addCreativeItem($item);
+        }
+
+        self::core()->getPluginManager()->registerEvents($this, $this);
+        self::core()->getLogger()->info(TextFormat::GOLD . "[EntityManager]플러그인이 활성화 되었습니다");
+        self::core()->getScheduler()->scheduleRepeatingTask(new EntityManagerTask([$this, "updateEntity"], $this), 1);
     }
 
     public function onDisable(){
-        if(!$this->isPhar() || !self::$isLoaded) return;
         file_put_contents($this->path . "SpawnerData.yml", yaml_emit(self::$spawnerData, YAML_UTF8_ENCODING));
     }
 
     public static function yaml($file){
-        if(!self::$isLoaded) return "";
         return preg_replace("#^([ ]*)([a-zA-Z_]{1}[^\:]*)\:#m", "$1\"$2\":", file_get_contents($file));
     }
 
@@ -131,7 +132,6 @@ class EntityManager extends PluginBase implements Listener{
      * @return Animal[]|Monster[]
      */
     public static function getEntities(){
-        if(!self::$isLoaded) return [];
         return self::$entities;
     }
 
@@ -142,7 +142,7 @@ class EntityManager extends PluginBase implements Listener{
      * @return bool
      */
     public static function clearEntity(Level $level = null, $type = []){
-        if(!self::$isLoaded || !is_array($type)) return false;
+        if(!is_array($type)) return false;
         $type = count($type) === 0 ? [Animal::class, Monster::class] : $type;
         $level = $level === null ? self::core()->getDefaultLevel() : $level;
         foreach($level->getEntities() as $id => $ent){
@@ -157,7 +157,6 @@ class EntityManager extends PluginBase implements Listener{
     }
 
     public static function getData($key){
-        if(!self::$isLoaded) return null;
         $vars = explode(".", $key);
         $base = array_shift($vars);
         if(!isset(self::$entityData[$base])) return false;
@@ -178,7 +177,6 @@ class EntityManager extends PluginBase implements Listener{
      * @return Animal|Monster
      */
     public static function createEntity($type, Position $source, $isSpawn = true){
-        if(!self::$isLoaded || self::getData("entity.limit") <= count(self::getEntities())) return null;
         $chunk = $source->getLevel()->getChunk($source->getX() >> 4, $source->getZ() >> 4, true);
         if($chunk === null or !$chunk->isGenerated()) return null;
         $nbt = new Compound("", [
@@ -206,24 +204,16 @@ class EntityManager extends PluginBase implements Listener{
         return null;
     }
 
-    public static function registerEntity(){
-        $classes = [
-            Cow::class,
-            Pig::class,
-            Sheep::class,
-            Chicken::class,
-
-            Zombie::class,
-            Creeper::class,
-            Skeleton::class,
-            Spider::class,
-            PigZombie::class,
-            Enderman::class
-        ];
-        foreach($classes as $name){
-            $class = new \ReflectionClass($name);
-            self::$knownEntities[$name::NETWORK_ID] = $name;
+    public static function registerEntity($name){
+        $class = new \ReflectionClass($name);
+        if(is_a($name, Entity::class, true) and !$class->isAbstract()){
+            Entity::registerEntity($name, true);
+            if($name::NETWORK_ID !== -1){
+                self::$knownEntities[$name::NETWORK_ID] = $name;
+            }
+            self::$registerEntities[] = $name;
             self::$knownEntities[$class->getShortName()] = $name;
+            self::$shortNames[$name] = $class->getShortName();
         }
     }
 
@@ -295,13 +285,8 @@ class EntityManager extends PluginBase implements Listener{
             $entity->close();
         }elseif($entity instanceof Monster && !self::getData("spawn.mob")){
             $entity->close();
-        }elseif(
-            ($entity instanceof Animal ||$entity instanceof Monster)
-            && self::getData("entity.limit") <= count(self::getEntities())
-        ){
-            $entity->close();
         }
-        if(!$entity->closed && ($entity instanceof Animal ||$entity instanceof Monster)) self::$entities[$entity->getId()] = $entity;
+        if(!$entity->closed && in_array(get_class($entity), self::$registerEntities)) self::$entities[$entity->getId()] = $entity;
     }
 
     public function EntityDespawnEvent(EntityDespawnEvent $ev){
@@ -345,13 +330,10 @@ class EntityManager extends PluginBase implements Listener{
     }
 
     public function a(ExplosionPrimeEvent $ev){
-        $mode = self::getData("explode");
-        if($mode === false) $ev->setCancelled();
-        elseif($mode === "entity") $ev->setBlockBreaking(false);
+        $ev->setCancelled(!self::getData("entity.explode"));
     }
 
     public function onCommand(CommandSender $i, Command $cmd, $label, array $sub){
-        if(!$this->isPhar() || !self::$isLoaded) return true;
         $output = "[EntityManager]";
         switch($cmd->getName()){
             case "제거":
@@ -398,13 +380,6 @@ class EntityManagerTask extends PluginTask{
     public function __construct(callable $callable, Plugin $owner){
         $this->callable = $callable;
         $this->owner = $owner;
-    }
-
-    /**
-     * @return callable
-     */
-    public function getCallable(){
-        return $this->callable;
     }
 
     public function onRun($currentTicks){

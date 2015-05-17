@@ -1,9 +1,9 @@
 #name, main, version and api are required
 name: EntityManager
 main: plugin\EntityManager
-version: "1.2"
+version: "2.0 Beta"
 api: 1.7.0
-load: STARTUP
+load: POSTWORLD
 author: 우유맛비누
 commands:
  제거:

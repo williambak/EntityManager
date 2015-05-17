@@ -8,24 +8,24 @@ use pocketmine\item\Item;
 use pocketmine\math\Vector3;
 use pocketmine\Player;
 
-class Spider extends Monster{
-    const NETWORK_ID = 35;
+class CustomEntity extends Monster{
+    //아직 쓸게 못됨
 
-    public $width = 1.5;
-    public $length = 0.8;
-    public $height = 1.12;
+    public $width = 0.72;
+    public $length = 0.4;
+    public $height = 1.8;
+    public $eyeHeight = 1.62;
 
     public function initEntity(){
         parent::initEntity();
 
-        $this->setMaxHealth(16);
-        $this->setDamage([0, 2, 2, 3]);
+        $this->setDamage([0, 3, 4, 6]);
         $this->lastTick = microtime(true);
         $this->created = true;
     }
 
     public function getName(){
-        return "거미";
+        return "";
     }
 
     public function updateTick(){
@@ -42,7 +42,7 @@ class Spider extends Monster{
         $this->moveTime += $tick;
         $target = $this->updateMove($tick);
         if($target instanceof Player){
-            if($this->attackDelay >= 16 && $this->distance($target) <= 1.1){
+            if($this->attackDelay >= 16 && $this->distanceSquared($target) <= 0.81){
                 $this->attackDelay = 0;
                 $ev = new EntityDamageByEntityEvent($this, $target, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $this->getDamage()[$this->server->getDifficulty()]);
                 $target->attack($ev->getFinalDamage(), $ev);
@@ -50,7 +50,7 @@ class Spider extends Monster{
         }elseif($target instanceof Vector3){
             if($this->distance($target) <= 1){
                 $this->moveTime = 800;
-            }elseif($this->x === $this->lastX or $this->z === $this->lastZ){
+            }elseif($this->x == $this->lastX or $this->z == $this->lastZ){
                 $this->moveTime += 20;
             }
         }
@@ -60,7 +60,20 @@ class Spider extends Monster{
     }
 
     public function getDrops(){
-        return $this->lastDamageCause instanceof EntityDamageByEntityEvent ? [Item::get(Item::STRING, 0, mt_rand(0, 3))] : [];
+        $drops = [];
+        if($this->lastDamageCause instanceof EntityDamageByEntityEvent){
+            switch(mt_rand(0, 2)){
+                case 0 :
+                    $drops [] = Item::get(Item::FEATHER, 0, 1);
+                    break;
+                case 1 :
+                    $drops [] = Item::get(Item::CARROT, 0, 1);
+                    break;
+                case 2 :
+                    $drops [] = Item::get(Item::POTATO, 0, 1);
+                    break;
+            }
+        }
+        return $drops;
     }
-
 }

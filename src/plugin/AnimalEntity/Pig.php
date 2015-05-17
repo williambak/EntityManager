@@ -4,9 +4,7 @@ namespace plugin\AnimalEntity;
 
 use pocketmine\entity\Rideable;
 use pocketmine\item\Item;
-use pocketmine\item\Item as ItemItem;
 use pocketmine\math\Vector3;
-use pocketmine\nbt\tag\String;
 use pocketmine\Player;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 
@@ -23,8 +21,8 @@ class Pig extends Animal implements Rideable{
 
     public function initEntity(){
         parent::initEntity();
+
         $this->setMaxHealth(10);
-        $this->namedtag->id = new String("id", "Pig");
         $this->lastTick = microtime(true);
         $this->created = true;
     }
@@ -55,15 +53,16 @@ class Pig extends Animal implements Rideable{
             return $target;
         }elseif($this->moveTime >= mt_rand(400, 800) or ($target === null and !$this->target instanceof Vector3)){
             $this->moveTime = 0;
-            $this->target = new Vector3($this->x + mt_rand(-100, 100), $this->y, $this->z + mt_rand(-100,100));
+            $this->target = new Vector3($this->x + mt_rand(-100, 100), $this->y, $this->z + mt_rand(-100, 100));
         }
         return $this->target;
     }
-    public function getDrops() {
-    	$drops = [ ];
-    	if ($this->lastDamageCause instanceof EntityDamageByEntityEvent) {
-    		$drops [] = ItemItem::get ( ItemItem::RAW_PORKCHOP, 0, 1 );
-    	}
-    	return $drops;
+
+    public function getDrops(){
+        if($this->lastDamageCause instanceof EntityDamageByEntityEvent){
+            return [Item::get(Item::RAW_PORKCHOP, 0, 1)];
+        }
+        return [];
     }
+
 }

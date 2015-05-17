@@ -7,11 +7,9 @@ use pocketmine\event\entity\ExplosionPrimeEvent;
 use pocketmine\level\Explosion;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Int;
-use pocketmine\nbt\tag\Short;
-use pocketmine\nbt\tag\String;
 use pocketmine\Player;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
-use pocketmine\item\Item as ItemItem;
+use pocketmine\item\Item;
 
 class Creeper extends Monster implements Explosive{
     const NETWORK_ID = 33;
@@ -22,22 +20,20 @@ class Creeper extends Monster implements Explosive{
 
     private $bombTime = 0;
 
-    protected function initEntity(){
+    public function initEntity(){
         parent::initEntity();
 
         $this->lastTick = microtime(true);
-        if(!isset($this->namedtag->id)){
-            $this->namedtag->id = new String("id", "Creeper");
-        }
-        if(!isset($this->namedtag->Health)){
-            $this->namedtag->Health = new Short("Health", $this->getMaxHealth());
-        }
         if(!isset($this->namedtag->BombTime)){
             $this->namedtag->BombTime = new Int("BombTime", $this->bombTime);
         }
-        $this->setHealth($this->namedtag["Health"]);
         $this->bombTime = (int) $this->namedtag["BombTime"];
         $this->created = true;
+    }
+
+    public function saveNBT(){
+        $this->namedtag->BombTime = new Int("BombTime", $this->bombTime);
+        parent::saveNBT();
     }
 
     public function getName(){
@@ -91,21 +87,23 @@ class Creeper extends Monster implements Explosive{
         $this->updateMovement();
         $this->lastTick = microtime(true);
     }
-    public function getDrops() {
-    	$drops = [ ];
-    	if ($this->lastDamageCause instanceof EntityDamageByEntityEvent) {
-    		switch (mt_rand ( 0, 2 )) {
-    			case 0 :
-    				$drops [] = ItemItem::get ( ItemItem::FLINT, 0, 1 );
-    				break;
-    			case 1 :
-    				$drops [] = ItemItem::get ( ItemItem::GUNPOWDER, 0, 1 );
-    				break;
-    			case 2 :
-    				$drops [] = ItemItem::get ( ItemItem::REDSTONE_DUST, 0, 1 );
-    				break;
-    		}
-    	}
-    	return $drops;
+
+    public function getDrops(){
+        $drops = [];
+        if($this->lastDamageCause instanceof EntityDamageByEntityEvent){
+            switch(mt_rand(0, 2)){
+                case 0 :
+                    $drops [] = Item::get(Item::FLINT, 0, 1);
+                    break;
+                case 1 :
+                    $drops [] = Item::get(Item::GUNPOWDER, 0, 1);
+                    break;
+                case 2 :
+                    $drops [] = Item::get(Item::REDSTONE_DUST, 0, 1);
+                    break;
+            }
+        }
+        return $drops;
     }
+
 }
