@@ -45,8 +45,8 @@ abstract class Animal extends BaseEntity implements Ageable{
     public function updateTick(){
         $tick = (microtime(true) - $this->lastTick) * 20;
         if(!$this->isAlive()){
-            $this->knockBackCheck($tick);
-            if(++$this->deadTicks >= 23) $this->close();
+            $this->deadTicks += $tick;
+            if((int) $this->deadTicks >= 23) $this->close();
             return;
         }
 
