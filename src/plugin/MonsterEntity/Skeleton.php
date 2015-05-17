@@ -39,7 +39,7 @@ class Skeleton extends Monster implements ProjectileSource{
         $tick = (microtime(true) - $this->lastTick) * 20;
         if(!$this->isAlive()){
             $this->deadTicks += $tick;
-            if($this->deadTicks >= 25) $this->close();
+            if((int) $this->deadTicks >= 23) $this->close();
             return;
         }
 
