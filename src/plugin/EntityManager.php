@@ -87,7 +87,7 @@ class EntityManager extends PluginBase implements Listener{
                     "auto" => true,
                     "mob" => true,
                     "animal" => true,
-                    "tick" => 50,
+                    "tick" => 150,
                     "radius" => 25
                 ],
             ];
@@ -155,14 +155,17 @@ class EntityManager extends PluginBase implements Listener{
         return true;
     }
 
-    public static function getData($key){
+    public static function getData($key, $default = false){
         $vars = explode(".", $key);
         $base = array_shift($vars);
-        if(!isset(self::$entityData[$base])) return false;
+        if(!isset(self::$entityData[$base])){
+            self::$entityData[$base] = $default;
+            return $default;
+        }
         $base = self::$entityData[$base];
         while(count($vars) > 0){
             $baseKey = array_shift($vars);
-            if(!is_array($base) or !isset($base[$baseKey])) return false;
+            if(!is_array($base) or !isset($base[$baseKey])) return $default;
             $base = $base[$baseKey];
         }
         return $base;
@@ -216,10 +219,10 @@ class EntityManager extends PluginBase implements Listener{
     }
 
     public function updateEntity(){
-        if(++$this->tick >= self::getData("spawn.tick")){
+        if(++$this->tick >= self::getData("spawn.tick", 150)){
             $this->tick = 0;
             foreach(self::$spawnerData as $pos => $data){
-                if(mt_rand(1, 4) > 1) continue;
+                if(mt_rand(1, 3) > 1) continue;
                 if(count($data["mob-list"]) === 0){
                     unset(self::$spawnerData[$pos]);
                     continue;
@@ -233,23 +236,16 @@ class EntityManager extends PluginBase implements Listener{
                 if(
                     ($bb !== null and $bb->maxY - $bb->minY > 0)
                     || ($bb1 !== null and $bb1->maxY - $bb1->minY > 0)
-                    || $bb2 === null or ($bb2 !== null and $bb2->maxY - $bb2->minY !== 1)
+                    || ($bb2 !== null and $bb2->maxY - $bb2->minY > 1)
                 ) continue;
                 self::createEntity($data["mob-list"][mt_rand(0, count($data["mob-list"]) - 1)], Position::fromObject($pos, $level));
             }
-            if(self::getData("entity.autospawn")) foreach(self::core()->getOnlinePlayers() as $player){
-                if(mt_rand(0, 4) > 0) continue;
+            if(self::getData("spawn.auto", true)) foreach(self::core()->getOnlinePlayers() as $player){
+                if(mt_rand(1, 10) > 1) continue;
                 $level = $player->getLevel();
-                $rad = self::getData("spawn.radius");
-                $pos = $player->add(mt_rand(-$rad, $rad), mt_rand(-$rad, $rad), mt_rand(-$rad, $rad))->floor();
-                $bb = $level->getBlock($pos)->getBoundingBox();
-                $bb1 = $level->getBlock($pos->add(0, 1))->getBoundingBox();
-                $bb2 = $level->getBlock($pos->add(0, -1))->getBoundingBox();
-                if(
-                    ($bb !== null && $bb->maxY - $bb->minY > 0)
-                    || ($bb1 !== null && $bb1->maxY - $bb1->minY > 0)
-                    || $bb2 === null or ($bb2 !== null and $bb2->maxY - $bb2->minY > 1)
-                ) continue;
+                $radius = self::getData("spawn.radius", 25);
+                $pos = $player->add(mt_rand(-$radius, $radius), 0, mt_rand(-$radius, $radius));
+                $pos->y = $level->getHighestBlockAt($pos->x, $pos->z);
                 $ent = [
                     ["Cow", "Pig", "Sheep", "Chicken", null, null],
                     ["Zombie", "Creeper", "Skeleton", "Spider", "PigZombie", "Enderman"]
@@ -279,9 +275,9 @@ class EntityManager extends PluginBase implements Listener{
 
     public function EntitySpawnEvent(EntitySpawnEvent $ev){
         $entity = $ev->getEntity();
-        if($entity instanceof Animal && !self::getData("spawn.animal")){
+        if($entity instanceof Animal && !self::getData("spawn.animal", true)){
             $entity->close();
-        }elseif($entity instanceof Monster && !self::getData("spawn.mob")){
+        }elseif($entity instanceof Monster && !self::getData("spawn.mob", true)){
             $entity->close();
         }
         if(!$entity->closed && in_array(get_class($entity), [Minecart::class, BaseEntity::class])) self::$entities[$entity->getId()] = $entity;
@@ -328,7 +324,7 @@ class EntityManager extends PluginBase implements Listener{
     }
 
     public function a(ExplosionPrimeEvent $ev){
-        $ev->setCancelled(!self::getData("entity.explode"));
+        $ev->setCancelled(!self::getData("entity.explode", true));
     }
 
     public function onCommand(CommandSender $i, Command $cmd, $label, array $sub){
