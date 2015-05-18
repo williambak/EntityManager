@@ -280,7 +280,11 @@ class EntityManager extends PluginBase implements Listener{
         }elseif($entity instanceof Monster && !self::getData("spawn.mob", true)){
             $entity->close();
         }
-        if(!$entity->closed && in_array(get_class($entity), [Minecart::class, BaseEntity::class])) self::$entities[$entity->getId()] = $entity;
+        foreach([Minecart::class, BaseEntity::class] as $class){
+            if(is_a($entity, $class, true) && !$entity->closed){
+                self::$entities[$entity->getId()] = $entity;
+            }
+        }
     }
 
     public function EntityDespawnEvent(EntityDespawnEvent $ev){
