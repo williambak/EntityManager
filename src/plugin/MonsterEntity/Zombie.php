@@ -6,6 +6,7 @@ use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\item\Item;
 use pocketmine\math\Vector3;
+use pocketmine\nbt\tag\Short;
 use pocketmine\Player;
 
 class Zombie extends Monster{
@@ -19,6 +20,10 @@ class Zombie extends Monster{
     public function initEntity(){
         parent::initEntity();
 
+        if(!isset($this->namedtag->Health)){
+            $this->namedtag->Health = new Short("Health", $this->getMaxHealth());
+        }
+        $this->setHealth((int) $this->namedtag["Health"]);
         $this->setDamage([0, 3, 4, 6]);
         $this->lastTick = microtime(true);
         $this->created = true;

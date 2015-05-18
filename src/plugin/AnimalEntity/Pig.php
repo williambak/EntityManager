@@ -5,6 +5,7 @@ namespace plugin\AnimalEntity;
 use pocketmine\entity\Rideable;
 use pocketmine\item\Item;
 use pocketmine\math\Vector3;
+use pocketmine\nbt\tag\Short;
 use pocketmine\Player;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 
@@ -23,6 +24,10 @@ class Pig extends Animal implements Rideable{
         parent::initEntity();
 
         $this->setMaxHealth(10);
+        if(!isset($this->namedtag->Health)){
+            $this->namedtag->Health = new Short("Health", $this->getMaxHealth());
+        }
+        $this->setHealth((int) $this->namedtag["Health"]);
         $this->lastTick = microtime(true);
         $this->created = true;
     }

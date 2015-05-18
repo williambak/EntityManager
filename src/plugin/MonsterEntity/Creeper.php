@@ -7,6 +7,7 @@ use pocketmine\event\entity\ExplosionPrimeEvent;
 use pocketmine\level\Explosion;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Int;
+use pocketmine\nbt\tag\Short;
 use pocketmine\Player;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\item\Item;
@@ -27,6 +28,10 @@ class Creeper extends Monster implements Explosive{
         if(!isset($this->namedtag->BombTime)){
             $this->namedtag->BombTime = new Int("BombTime", $this->bombTime);
         }
+        if(!isset($this->namedtag->Health)){
+            $this->namedtag->Health = new Short("Health", $this->getMaxHealth());
+        }
+        $this->setHealth((int) $this->namedtag["Health"]);
         $this->bombTime = (int) $this->namedtag["BombTime"];
         $this->created = true;
     }

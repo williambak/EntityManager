@@ -80,6 +80,11 @@ class EntityManager extends PluginBase implements Listener{
             self::$entityData = yaml_parse($this->yaml($this->path . "EntityData.yml"));
         }else{
             self::$entityData = [
+                "custom" =>[
+                    "name" => "CustomEntity",
+                    "type" => 32, //엔티티 타입
+                    "damage" => [0, 3, 4, 6], //난이도별 데미지
+                ],
                 "entity" => [
                     "explode" => true,
                 ],
@@ -101,12 +106,9 @@ class EntityManager extends PluginBase implements Listener{
             file_put_contents($this->path . "SpawnerData.yml", yaml_emit(self::$spawnerData, YAML_UTF8_ENCODING));
         }
 
-        for($a = 10; $a <= 13; $a++){
-            $item = Item::get(Item::SPAWN_EGG, $a);
-            if(!Item::isCreativeItem($item)) Item::addCreativeItem($item);
-        }
-        for($a = 32; $a <= 42; $a++){
-            $item = Item::get(Item::SPAWN_EGG, $a);
+        foreach(self::$knownEntities as $id => $name){
+            if(!is_numeric($id)) continue;
+            $item = Item::get(Item::SPAWN_EGG, $id);
             if(!Item::isCreativeItem($item)) Item::addCreativeItem($item);
         }
 
@@ -155,6 +157,11 @@ class EntityManager extends PluginBase implements Listener{
         return true;
     }
 
+    /**
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
+     */
     public static function getData($key, $default = false){
         $vars = explode(".", $key);
         $base = array_shift($vars);
@@ -174,7 +181,7 @@ class EntityManager extends PluginBase implements Listener{
     /**
      * @param int|string $type
      * @param Position $source
-     * @param $args
+     * @param mixed ...$args
      *
      * @return BaseEntity
      */
@@ -267,7 +274,7 @@ class EntityManager extends PluginBase implements Listener{
         }
         if(++$this->entTick >= $maxTick){
             foreach(self::getEntities() as $entity){
-                if($entity->isCreated()) $entity->updateTick();
+                if($entity->isAlive()) $entity->updateTick();
             }
             $this->entTick = 0;
         }
@@ -280,18 +287,17 @@ class EntityManager extends PluginBase implements Listener{
         }elseif($entity instanceof Monster && !self::getData("spawn.mob", true)){
             $entity->close();
         }
-        foreach([Minecart::class, BaseEntity::class] as $class){
+        foreach([BaseEntity::class, Minecart::class] as $class){
             if(is_a($entity, $class, true) && !$entity->closed){
                 self::$entities[$entity->getId()] = $entity;
+                return;
             }
         }
     }
 
     public function EntityDespawnEvent(EntityDespawnEvent $ev){
         $entity = $ev->getEntity();
-        if($entity instanceof Animal or $entity instanceof Monster){
-            unset(self::$entities[$entity->getId()]);
-        }
+        if($entity instanceof BaseEntity or $entity instanceof Minecart) unset(self::$entities[$entity->getId()]);
     }
 
     public function PlayerInteractEvent(PlayerInteractEvent $ev){

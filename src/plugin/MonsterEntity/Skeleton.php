@@ -15,6 +15,7 @@ use pocketmine\nbt\tag\Compound;
 use pocketmine\nbt\tag\Double;
 use pocketmine\nbt\tag\Enum;
 use pocketmine\nbt\tag\Float;
+use pocketmine\nbt\tag\Short;
 use pocketmine\Player;
 
 class Skeleton extends Monster implements ProjectileSource{
@@ -27,6 +28,10 @@ class Skeleton extends Monster implements ProjectileSource{
     public function initEntity(){
         parent::initEntity();
 
+        if(!isset($this->namedtag->Health)){
+            $this->namedtag->Health = new Short("Health", $this->getMaxHealth());
+        }
+        $this->setHealth((int) $this->namedtag["Health"]);
         $this->lastTick = microtime(true);
         $this->created = true;
     }

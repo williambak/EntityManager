@@ -4,6 +4,7 @@ namespace plugin\MonsterEntity;
 
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Int;
+use pocketmine\nbt\tag\Short;
 use pocketmine\Player;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
@@ -24,12 +25,16 @@ class PigZombie extends Monster{
 
         $this->fireProof = true;
         $this->setMaxHealth(22);
-        $this->setDamage([0, 5, 9, 13]);
-        $this->lastTick = microtime(true);
+        if(!isset($this->namedtag->Health)){
+            $this->namedtag->Health = new Short("Health", $this->getMaxHealth());
+        }
+        $this->setHealth((int) $this->namedtag["Health"]);
         if(!isset($this->namedtag->Angry)){
             $this->namedtag->Angry = new Int("Angry", $this->angry);
         }
         $this->angry = (int) $this->namedtag["Angry"];
+        $this->setDamage([0, 5, 9, 13]);
+        $this->lastTick = microtime(true);
         $this->created = true;
     }
 

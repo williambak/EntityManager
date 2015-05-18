@@ -13,7 +13,6 @@ use pocketmine\level\Level;
 use pocketmine\math\AxisAlignedBB;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Byte;
-use pocketmine\nbt\tag\Short;
 use pocketmine\network\Network;
 use pocketmine\network\protocol\AddEntityPacket;
 use pocketmine\network\protocol\EntityEventPacket;
@@ -26,14 +25,13 @@ abstract class BaseEntity extends Creature{
     public $stayVec = null;
     public $stayTime = 0;
 
+    protected $lastTick = 0;
+    protected $moveTime = 0;
+    protected $created = false;
     /** @var Vector3 */
     protected $target = null;
     /** @var Entity|null */
     protected $attacker = null;
-
-    protected $lastTick = 0;
-    protected $moveTime = 0;
-    protected $created = false;
 
     private $movement = true;
 
@@ -57,6 +55,10 @@ abstract class BaseEntity extends Creature{
         return false;
     }
 
+    public function isAlive(){
+        return parent::isAlive() && $this->created;
+    }
+
     public function isCreated(){
         return $this->created;
     }
@@ -75,10 +77,6 @@ abstract class BaseEntity extends Creature{
             $this->namedtag->Movement = new Byte("Movement", (int) $this->isMovement());
         }
         $this->setMovement($this->namedtag["Movement"]);
-        if(!isset($this->namedtag->Health)){
-            $this->namedtag->Health = new Short("Health", $this->getMaxHealth());
-        }
-        $this->setHealth((int) $this->namedtag["Health"]);
     }
 
     public function saveNBT(){
