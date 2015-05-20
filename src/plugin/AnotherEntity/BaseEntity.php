@@ -35,6 +35,7 @@ abstract class BaseEntity extends Creature{
     protected $attacker = null;
 
     private $movement = true;
+    private $lastMove = null;
 
     public abstract function updateTick();
 
@@ -137,6 +138,11 @@ abstract class BaseEntity extends Creature{
         Server::broadcastPacket($this->hasSpawned, $pk->setChannel(Network::CHANNEL_WORLD_EVENTS));
     }
 
+    /**
+     * @param AxisAlignedBB $bb
+     *
+     * @return Entity[]|Block[]
+     */
     public function getCollisionCubes(AxisAlignedBB $bb){
         $minX = Math::floorFloat($bb->minX);
         $minY = Math::floorFloat($bb->minY);
@@ -164,8 +170,9 @@ abstract class BaseEntity extends Creature{
     }
 
     public function move($dx, $dz, $dy = 0){
-        if($dy <= 0 && !$this->onGround && $this->lastY !== null){
-            $this->motionY -= $this->gravity;
+        $tick = (microtime(true) - $this->lastMove) * 20;
+        if($dy === 0 && !$this->onGround && $this->lastMove !== null){
+            $this->motionY -= $this->gravity * $tick;
             $dy = $this->motionY;
         }
         $movX = $dx;
@@ -173,49 +180,54 @@ abstract class BaseEntity extends Creature{
         $movZ = $dz;
         $list = $this->getCollisionCubes($this->boundingBox->getOffsetBoundingBox($dx, $dy, $dz));
         foreach($list as $target){
-            if(!$target instanceof Block && !$target instanceof Entity) continue;
             $bb = $target->getBoundingBox();
+            $minY = (int) $this->boundingBox->minY;
+            $ar = [$minY];
+            if($this->height > 1) $ar[] = $minY + 1;
+            if($this instanceof Enderman) $ar[] = $minY + 2;
+            if(
+                $target instanceof Block
+                && $dy === 0
+                && $this->lastMove !== null
+                && $minY == $bb->minY
+                && ($minY + 1 == $bb->maxY || $minY + 0.5 == $bb->maxY)
+                && $bb->maxY - $bb->maxY <= 1
+            ){ //전설의 점프구현이다 무시하지 마라
+                $dy = 0.3 * $tick;
+                $this->motionY = 0;
+            }
             if(
                 $this->boundingBox->maxX > $bb->minX
                 and $this->boundingBox->minX < $bb->maxX
                 and $this->boundingBox->maxZ > $bb->minZ
                 and $this->boundingBox->minZ < $bb->maxZ
             ){
-                if($this->boundingBox->maxY + $dy >= $bb->minY and $this->boundingBox->maxY <= $bb->minY){
+                if($this->boundingBox->maxY + $dy >= $bb->minY and $this->boundingBox->maxY < $bb->minY){
                     if(($y1 = $bb->minY - ($this->boundingBox->maxY + $dy)) < 0) $dy += $y1;
                 }
-                if($this->boundingBox->minY + $dy <= $bb->maxY and $this->boundingBox->minY >= $bb->maxY){
+                if($this->boundingBox->minY + $dy <= $bb->maxY and $this->boundingBox->minY > $bb->maxY){
                     if(($y1 = $bb->maxY - ($this->boundingBox->minY + $dy)) > 0) $dy += $y1;
                 }
             }
-
-            $minY = (int) $this->boundingBox->minY;
-            $ar = [$minY];
-            if($this->height > 1) $ar[] = $minY + 1;
-            if($this instanceof Enderman) $ar[] = $minY + 2;
             if(
-                ($minY + 0.5) !== $bb->maxY
-                && ($py = array_search($bb->minY, $ar)) !== false
+                $this->boundingBox->minY !== $bb->maxY
+                && array_search($bb->minY, $ar) !== false
             ){
                 if($this->boundingBox->maxZ > $bb->minZ && $this->boundingBox->minZ < $bb->maxZ){
-                    if($this->boundingBox->maxX + $dx >= $bb->minX and $this->boundingBox->maxX <= $bb->minX){
+                    if($this->boundingBox->maxX + $dx >= $bb->minX and $this->boundingBox->maxX < $bb->minX){
                         if(($x1 = $this->boundingBox->maxX + $dx - $bb->minX) > 0) $dx += $x1;
                     }
-                    if($this->boundingBox->minX + $dx <= $bb->maxX and $this->boundingBox->minX >= $bb->maxX){
+                    if($this->boundingBox->minX + $dx <= $bb->maxX and $this->boundingBox->minX > $bb->maxX){
                         if(($x1 = $this->boundingBox->minX + $dx - $bb->maxX) < 0) $dx += $x1;
                     }
                 }
                 if($this->boundingBox->maxX > $bb->minX && $this->boundingBox->minX < $bb->maxX){
-                    if($this->boundingBox->maxZ + $dz >= $bb->minZ and $this->boundingBox->maxZ <= $bb->minZ){
+                    if($this->boundingBox->maxZ + $dz >= $bb->minZ and $this->boundingBox->maxZ < $bb->minZ){
                         if(($z1 = $this->boundingBox->maxZ + $dz - $bb->minZ) > 0) $dz += $z1;
                     }
-                    if($this->boundingBox->minZ + $dz <= $bb->maxZ and $this->boundingBox->minZ >= $bb->maxZ){
+                    if($this->boundingBox->minZ + $dz <= $bb->maxZ and $this->boundingBox->minZ > $bb->maxZ){
                         if(($z1 = $this->boundingBox->minZ + $dz - $bb->maxZ) < 0) $dz += $z1;
                     }
-                }
-                if($target instanceof Block && $minY + 1 + $py == $bb->maxY && $bb->maxY - $bb->maxY <= 1 & $dy === 0){
-                    $dy = 0.3;
-                    $this->motionY = 0;
                 }
             }
         }
@@ -228,6 +240,8 @@ abstract class BaseEntity extends Creature{
         $this->isCollidedVertically = $movY != $dy;
         $this->isCollidedHorizontally = ($movX != $dx or $movZ != $dz);
         $this->isCollided = ($this->isCollidedHorizontally or $this->isCollidedVertically);
+
+        $this->lastMove = microtime(true);
     }
 
     public function knockBackCheck($tick = 1){
