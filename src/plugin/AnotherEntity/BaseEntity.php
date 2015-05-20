@@ -180,12 +180,13 @@ abstract class BaseEntity extends Creature{
         $movZ = $dz;
         $list = $this->getCollisionCubes($this->boundingBox->getOffsetBoundingBox($dx, $dy, $dz));
         foreach($list as $target){
+            if(!$target instanceof Block && !$target instanceof Entity) continue;
             $bb = $target->getBoundingBox();
             $minY = (int) $this->boundingBox->minY;
             $ar = [$minY];
             if($this->height > 1) $ar[] = $minY + 1;
             if($this instanceof Enderman) $ar[] = $minY + 2;
-            if(
+            /*if(
                 $target instanceof Block
                 && $dy === 0
                 && $this->lastMove !== null
@@ -195,6 +196,24 @@ abstract class BaseEntity extends Creature{
             ){ //전설의 점프구현이다 무시하지 마라
                 $dy = 0.3 * $tick;
                 $this->motionY = 0;
+            }*/ //망함 점프 개XX
+            if(in_array($bb->minY, $ar)){
+                if($this->boundingBox->maxZ > $bb->minZ && $this->boundingBox->minZ < $bb->maxZ){
+                    if($this->boundingBox->maxX + $dx >= $bb->minX and $this->boundingBox->maxX <= $bb->minX){
+                        if(($x1 = $bb->minX - ($this->boundingBox->maxX + $dx)) < 0) $dx += $x1;
+                    }
+                    if($this->boundingBox->minX + $dx <= $bb->maxX and $this->boundingBox->minX >= $bb->maxX){
+                        if(($x1 = $bb->maxX - ($this->boundingBox->minX + $dx)) > 0) $dx += $x1;
+                    }
+                }
+                if($this->boundingBox->maxX > $bb->minX && $this->boundingBox->minX < $bb->maxX){
+                    if($this->boundingBox->maxZ + $dz >= $bb->minZ and $this->boundingBox->maxZ <= $bb->minZ){
+                        if(($z1 = $bb->minZ - ($this->boundingBox->maxZ + $dz)) < 0) $dz += $z1;
+                    }
+                    if($this->boundingBox->minZ + $dz <= $bb->maxZ and $this->boundingBox->minZ >= $bb->maxZ){
+                        if(($z1 = $bb->maxZ - ($this->boundingBox->minZ + $dz)) > 0) $dz += $z1;
+                    }
+                }
             }
             if(
                 $this->boundingBox->maxX > $bb->minX
@@ -202,32 +221,11 @@ abstract class BaseEntity extends Creature{
                 and $this->boundingBox->maxZ > $bb->minZ
                 and $this->boundingBox->minZ < $bb->maxZ
             ){
-                if($this->boundingBox->maxY + $dy >= $bb->minY and $this->boundingBox->maxY < $bb->minY){
+                if($this->boundingBox->maxY + $dy >= $bb->minY and $this->boundingBox->maxY <= $bb->minY){
                     if(($y1 = $bb->minY - ($this->boundingBox->maxY + $dy)) < 0) $dy += $y1;
                 }
-                if($this->boundingBox->minY + $dy <= $bb->maxY and $this->boundingBox->minY > $bb->maxY){
+                if($this->boundingBox->minY + $dy <= $bb->maxY and $this->boundingBox->minY >= $bb->maxY){
                     if(($y1 = $bb->maxY - ($this->boundingBox->minY + $dy)) > 0) $dy += $y1;
-                }
-            }
-            if(
-                $this->boundingBox->minY !== $bb->maxY
-                && array_search($bb->minY, $ar) !== false
-            ){
-                if($this->boundingBox->maxZ > $bb->minZ && $this->boundingBox->minZ < $bb->maxZ){
-                    if($this->boundingBox->maxX + $dx >= $bb->minX and $this->boundingBox->maxX < $bb->minX){
-                        if(($x1 = $this->boundingBox->maxX + $dx - $bb->minX) > 0) $dx += $x1;
-                    }
-                    if($this->boundingBox->minX + $dx <= $bb->maxX and $this->boundingBox->minX > $bb->maxX){
-                        if(($x1 = $this->boundingBox->minX + $dx - $bb->maxX) < 0) $dx += $x1;
-                    }
-                }
-                if($this->boundingBox->maxX > $bb->minX && $this->boundingBox->minX < $bb->maxX){
-                    if($this->boundingBox->maxZ + $dz >= $bb->minZ and $this->boundingBox->maxZ < $bb->minZ){
-                        if(($z1 = $this->boundingBox->maxZ + $dz - $bb->minZ) > 0) $dz += $z1;
-                    }
-                    if($this->boundingBox->minZ + $dz <= $bb->maxZ and $this->boundingBox->minZ > $bb->maxZ){
-                        if(($z1 = $this->boundingBox->minZ + $dz - $bb->maxZ) < 0) $dz += $z1;
-                    }
                 }
             }
         }
