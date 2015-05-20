@@ -89,18 +89,8 @@ class CustomEntity extends Monster{
 
     public function getDrops(){
         $drops = [];
-        if($this->lastDamageCause instanceof EntityDamageByEntityEvent){
-            switch(mt_rand(0, 2)){
-                case 0 :
-                    $drops [] = Item::get(Item::FEATHER, 0, 1);
-                    break;
-                case 1 :
-                    $drops [] = Item::get(Item::CARROT, 0, 1);
-                    break;
-                case 2 :
-                    $drops [] = Item::get(Item::POTATO, 0, 1);
-                    break;
-            }
+        foreach(EntityManager::getData("custom.drops") as $drop){
+            $drops[] = Item::get($drop[0], $drop[1], $drop[2]);
         }
         return $drops;
     }

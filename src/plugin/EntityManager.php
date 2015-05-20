@@ -84,6 +84,7 @@ class EntityManager extends PluginBase implements Listener{
                     "name" => "CustomEntity",
                     "type" => 32, //엔티티 타입
                     "damage" => [0, 3, 4, 6], //난이도별 데미지
+                    "drops" => [], //죽을시 드롭할 아이템
                 ],
                 "entity" => [
                     "explode" => true,
@@ -165,10 +166,7 @@ class EntityManager extends PluginBase implements Listener{
     public static function getData($key, $default = false){
         $vars = explode(".", $key);
         $base = array_shift($vars);
-        if(!isset(self::$entityData[$base])){
-            self::$entityData[$base] = $default;
-            return $default;
-        }
+        if(!isset(self::$entityData[$base])) return $default;
         $base = self::$entityData[$base];
         while(count($vars) > 0){
             $baseKey = array_shift($vars);

@@ -11,6 +11,7 @@ use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\level\Level;
 use pocketmine\math\AxisAlignedBB;
+use pocketmine\math\Math;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Byte;
 use pocketmine\network\Network;
@@ -73,10 +74,9 @@ abstract class BaseEntity extends Creature{
 
     public function initEntity(){
         Entity::initEntity();
-        if(!isset($this->namedtag->Movement)){
-            $this->namedtag->Movement = new Byte("Movement", (int) $this->isMovement());
+        if(isset($this->namedtag->Movement)){
+            $this->setMovement($this->namedtag["Movement"]);
         }
-        $this->setMovement($this->namedtag["Movement"]);
     }
 
     public function saveNBT(){
@@ -142,12 +142,12 @@ abstract class BaseEntity extends Creature{
     }
 
     public function getCollisionCubes(AxisAlignedBB $bb){
-        $minX = (int) ($bb->minX);
-        $minY = (int) ($bb->minY);
-        $minZ = (int) ($bb->minZ);
-        $maxX = (int) ($bb->maxX + 1);
-        $maxY = (int) ($bb->maxY + 1);
-        $maxZ = (int) ($bb->maxZ + 1);
+        $minX = Math::floorFloat($bb->minX);
+        $minY = Math::floorFloat($bb->minY);
+        $minZ = Math::floorFloat($bb->minZ);
+        $maxX = Math::ceilFloat($bb->maxX);
+        $maxY = Math::ceilFloat($bb->maxY);
+        $maxZ = Math::ceilFloat($bb->maxZ);
 
         $collides = [];
         $v = new Vector3();

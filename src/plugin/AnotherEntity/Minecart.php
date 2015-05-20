@@ -7,6 +7,7 @@ use pocketmine\entity\Entity;
 use pocketmine\entity\Minecart as Real_Minecart;
 use pocketmine\level\Level;
 use pocketmine\math\AxisAlignedBB;
+use pocketmine\math\Math;
 use pocketmine\math\Vector3;
 use pocketmine\network\protocol\AddEntityPacket;
 use pocketmine\Player;
@@ -45,12 +46,12 @@ class Minecart extends Real_Minecart{
     }
 
     public function getCollisionCubes(AxisAlignedBB $bb){
-        $minX = (int) ($bb->minX);
-        $minY = (int) ($bb->minY);
-        $minZ = (int) ($bb->minZ);
-        $maxX = (int) ($bb->maxX + 1);
-        $maxY = (int) ($bb->maxY + 1);
-        $maxZ = (int) ($bb->maxZ + 1);
+        $minX = Math::floorFloat($bb->minX);
+        $minY = Math::floorFloat($bb->minY);
+        $minZ = Math::floorFloat($bb->minZ);
+        $maxX = Math::ceilFloat($bb->maxX);
+        $maxY = Math::ceilFloat($bb->maxY);
+        $maxZ = Math::ceilFloat($bb->maxZ);
 
         $collides = [];
         $v = new Vector3();
@@ -71,6 +72,10 @@ class Minecart extends Real_Minecart{
     }
 
     public function move($dx, $dz, $dy = 0){
+        if($dy <= 0 && !$this->onGround && $this->lastY !== null){
+            $this->motionY -= $this->gravity;
+            $dy = $this->motionY;
+        }
         $movX = $dx;
         $movY = $dy;
         $movZ = $dz;
@@ -78,25 +83,6 @@ class Minecart extends Real_Minecart{
         foreach($list as $target){
             if(!$target instanceof Block && !$target instanceof Entity) continue;
             $bb = $target->getBoundingBox();
-            $minY = (int) $this->boundingBox->minY;
-            if($bb->minY === $minY){
-                if($this->boundingBox->maxZ > $bb->minZ && $this->boundingBox->minZ < $bb->maxZ){
-                    if($this->boundingBox->maxX + $dx >= $bb->minX and $this->boundingBox->maxX <= $bb->minX){
-                        if(($x1 = $bb->minX - ($this->boundingBox->maxX + $dx)) < 0) $dx += $x1;
-                    }
-                    if($this->boundingBox->minX + $dx <= $bb->maxX and $this->boundingBox->minX >= $bb->maxX){
-                        if(($x1 = $bb->maxX - ($this->boundingBox->minX + $dx)) > 0) $dx += $x1;
-                    }
-                }
-                if($this->boundingBox->maxX > $bb->minX && $this->boundingBox->minX < $bb->maxX){
-                    if($this->boundingBox->maxZ + $dz >= $bb->minZ and $this->boundingBox->maxZ <= $bb->minZ){
-                        if(($z1 = $bb->minZ - ($this->boundingBox->maxZ + $dz)) < 0) $dz += $z1;
-                    }
-                    if($this->boundingBox->minZ + $dz <= $bb->maxZ and $this->boundingBox->minZ >= $bb->maxZ){
-                        if(($z1 = $bb->maxZ - ($this->boundingBox->minZ + $dz)) > 0) $dz += $z1;
-                    }
-                }
-            }
             if(
                 $this->boundingBox->maxX > $bb->minX
                 and $this->boundingBox->minX < $bb->maxX
@@ -108,6 +94,30 @@ class Minecart extends Real_Minecart{
                 }
                 if($this->boundingBox->minY + $dy <= $bb->maxY and $this->boundingBox->minY >= $bb->maxY){
                     if(($y1 = $bb->maxY - ($this->boundingBox->minY + $dy)) > 0) $dy += $y1;
+                }
+            }
+
+            $minY = (int) $this->boundingBox->minY;
+            if($minY === $bb->minY && ($minY + 0.5) !== $bb->maxY){
+                if($this->boundingBox->maxZ > $bb->minZ && $this->boundingBox->minZ < $bb->maxZ){
+                    if($this->boundingBox->maxX + $dx >= $bb->minX and $this->boundingBox->maxX <= $bb->minX){
+                        if(($x1 = $this->boundingBox->maxX + $dx - $bb->minX) > 0) $dx += $x1;
+                    }
+                    if($this->boundingBox->minX + $dx <= $bb->maxX and $this->boundingBox->minX >= $bb->maxX){
+                        if(($x1 = $this->boundingBox->minX + $dx - $bb->maxX) < 0) $dx += $x1;
+                    }
+                }
+                if($this->boundingBox->maxX > $bb->minX && $this->boundingBox->minX < $bb->maxX){
+                    if($this->boundingBox->maxZ + $dz >= $bb->minZ and $this->boundingBox->maxZ <= $bb->minZ){
+                        if(($z1 = $this->boundingBox->maxZ + $dz - $bb->minZ) > 0) $dz += $z1;
+                    }
+                    if($this->boundingBox->minZ + $dz <= $bb->maxZ and $this->boundingBox->minZ >= $bb->maxZ){
+                        if(($z1 = $this->boundingBox->minZ + $dz - $bb->maxZ) < 0) $dz += $z1;
+                    }
+                }
+                if($target instanceof Block && $minY + 1 == $bb->maxY && $bb->maxY - $bb->maxY <= 1 & $dy === 0){
+                    $dy = 0.3;
+                    $this->motionY = 0;
                 }
             }
         }
