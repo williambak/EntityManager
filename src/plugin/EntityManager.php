@@ -272,7 +272,7 @@ class EntityManager extends PluginBase implements Listener{
         }
         if(++$this->entTick >= $maxTick){
             foreach(self::getEntities() as $entity){
-                if($entity->isAlive()) $entity->updateTick();
+                if($entity->isCreated()) $entity->updateTick();
             }
             $this->entTick = 0;
         }

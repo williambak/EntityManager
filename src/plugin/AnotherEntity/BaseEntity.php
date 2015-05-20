@@ -56,10 +56,6 @@ abstract class BaseEntity extends Creature{
         return false;
     }
 
-    public function isAlive(){
-        return parent::isAlive() && $this->created;
-    }
-
     public function isCreated(){
         return $this->created;
     }
