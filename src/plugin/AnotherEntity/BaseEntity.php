@@ -2,7 +2,6 @@
 
 namespace plugin\AnotherEntity;
 
-use plugin\MonsterEntity\Enderman;
 use plugin\MonsterEntity\PigZombie;
 use pocketmine\block\Block;
 use pocketmine\entity\Creature;
@@ -102,11 +101,11 @@ abstract class BaseEntity extends Creature{
     }
 
     public function updateMovement(){
-        $this->lastX = $this->x;
-        $this->lastY = $this->y;
-        $this->lastZ = $this->z;
-        $this->lastYaw = $this->yaw;
-        $this->lastPitch = $this->pitch;
+        if($this->lastX != $this->x) $this->lastX = $this->x;
+        if($this->lastY != $this->y) $this->lastY = $this->y;
+        if($this->lastZ != $this->z) $this->lastZ = $this->z;
+        if($this->lastYaw != $this->yaw) $this->lastYaw = $this->yaw;
+        if($this->lastPitch != $this->pitch) $this->lastPitch = $this->pitch;
 
         foreach($this->hasSpawned as $player) $player->addEntityMovement($this->id, $this->x, $this->y, $this->z, $this->yaw, $this->pitch, $this->yaw);
     }
@@ -134,16 +133,11 @@ abstract class BaseEntity extends Creature{
         }
         $pk = new EntityEventPacket();
         $pk->eid = $this->getId();
-        $pk->event = !$this->isAlive() ? 3 : 2; //Ouch!
+        $pk->event = !$this->isAlive() ? 3 : 2;
         Server::broadcastPacket($this->hasSpawned, $pk->setChannel(Network::CHANNEL_WORLD_EVENTS));
     }
 
-    /**
-     * @param AxisAlignedBB $bb
-     *
-     * @return Entity[]|Block[]
-     */
-    public function getCollisionCubes(AxisAlignedBB $bb){
+    public function getCollisionCubes(AxisAlignedBB $bb, $entities = true){
         $minX = Math::floorFloat($bb->minX);
         $minY = Math::floorFloat($bb->minY);
         $minZ = Math::floorFloat($bb->minZ);
@@ -157,12 +151,12 @@ abstract class BaseEntity extends Creature{
             for($v->x = $minX; $v->x <= $maxX; ++$v->x){
                 for($v->y = $minY - 1; $v->y <= $maxY; ++$v->y){
                     $block = $this->level->getBlock($v);
-                    if($block->getBoundingBox() !== null) $collides[] = $block;
+                    if($block->getId() > 0 && $block->getBoundingBox() !== null) $collides[] = $block;
                 }
             }
         }
 
-        foreach($this->level->getCollidingEntities($bb->grow(0.25, 0.25, 0.25), $this) as $ent){
+        if($entities) foreach($this->level->getCollidingEntities($bb->grow(0.25, 0.25, 0.25), $this) as $ent){
             $collides[] = $ent;
         }
 
@@ -182,22 +176,18 @@ abstract class BaseEntity extends Creature{
         foreach($list as $target){
             if(!$target instanceof Block && !$target instanceof Entity) continue;
             $bb = $target->getBoundingBox();
-            $minY = (int) $this->boundingBox->minY;
-            $ar = [$minY];
-            if($this->height > 1) $ar[] = $minY + 1;
-            if($this instanceof Enderman) $ar[] = $minY + 2;
-            /*if(
+            if( //점프는 구현중에 있음
                 $target instanceof Block
-                && $dy === 0
                 && $this->lastMove !== null
-                && $minY == $bb->minY
-                && ($minY + 1 == $bb->maxY || $minY + 0.5 == $bb->maxY)
-                && $bb->maxY - $bb->maxY <= 1
-            ){ //전설의 점프구현이다 무시하지 마라
-                $dy = 0.3 * $tick;
+                && $dy === 0 //y 좌표가 다른방식에 의해 수정되는중이 아님
+                && $this->boundingBox->minY >= $bb->minY //최하의 y좌표 체킹
+                && $target->distanceSquared($this) <= 1 //그 블럭과의 거리
+                && $bb->maxY - $bb->minY <= 1 //블럭의 높이
+            ){ //왜 점프가 안될까... ㅠㅠ
+                $dy = 0.65;
                 $this->motionY = 0;
-            }*/ //망함 점프 개XX
-            if(in_array($bb->minY, $ar)){
+            }
+            if($this->boundingBox->maxY > $bb->minY and $this->boundingBox->minY < $bb->maxY){
                 if($this->boundingBox->maxZ > $bb->minZ && $this->boundingBox->minZ < $bb->maxZ){
                     if($this->boundingBox->maxX + $dx >= $bb->minX and $this->boundingBox->maxX <= $bb->minX){
                         if(($x1 = $bb->minX - ($this->boundingBox->maxX + $dx)) < 0) $dx += $x1;
@@ -229,8 +219,9 @@ abstract class BaseEntity extends Creature{
                 }
             }
         }
-        $this->boundingBox->offset($dx, $dy, $dz);
+        $radius = $this->width / 2;
         $this->setComponents($this->x + $dx, $this->y + $dy, $this->z + $dz);
+        $this->boundingBox->setBounds($this->x - $radius, $this->y, $this->z - $radius, $this->x + $radius, $this->y + $this->height, $this->z + $radius);
 
         $this->updateFallState($dy, $this->onGround = ($movY != $dy and $movY < 0));
         if($this->onGround) $this->motionY = 0;

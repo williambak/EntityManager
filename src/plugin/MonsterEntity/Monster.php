@@ -79,10 +79,10 @@ abstract class Monster extends BaseEntity{
         }
 
         if($this instanceof Enderman){
-            if($this->level->getBlock(new Vector3(Math::floorFloat($this->x), Math::floorFloat($this->y), Math::floorFloat($this->z))) instanceof Water){
+            if($this->level->getBlock(new Vector3(Math::floorFloat($this->x), (int) $this->y, Math::floorFloat($this->z))) instanceof Water){
                 $ev = new EntityDamageEvent($this, EntityDamageEvent::CAUSE_DROWNING, 2);
                 $this->attack($ev->getFinalDamage(), $ev);
-                $this->teleport($this->add(mt_rand(-20, 20), mt_rand(-20, 20), mt_rand(-20, 20)));
+                $this->move(mt_rand(-20, 20), mt_rand(-20, 20), mt_rand(-20, 20));
             }
         }else{
             if(!$this->hasEffect(Effect::WATER_BREATHING) && $this->isInsideOfWater()){
