@@ -6,7 +6,7 @@ use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\math\Vector3;
 use pocketmine\Player;
-use pocketmine\item\Item as ItemItem;
+use pocketmine\item\Item;
 
 class Enderman extends Monster{
     const NETWORK_ID = 38;
@@ -62,7 +62,7 @@ class Enderman extends Monster{
     public function getDrops(){
         $drops = [];
         if($this->lastDamageCause instanceof EntityDamageByEntityEvent){
-            $drops[] = ItemItem::get(ItemItem::END_STONE, 0, 1);
+            $drops[] = Item::get(Item::END_STONE, 0, 1);
         }
         return [];
     }

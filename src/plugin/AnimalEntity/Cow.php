@@ -65,10 +65,10 @@ class Cow extends Animal{
         if($this->lastDamageCause instanceof EntityDamageByEntityEvent){
             switch(mt_rand(0, 1)){
                 case 0 :
-                    $drops [] = Item::get(Item::RAW_BEEF, 0, 1);
+                    $drops[] = Item::get(Item::RAW_BEEF, 0, 1);
                     break;
                 case 1 :
-                    $drops [] = Item::get(Item::LEATHER, 0, 1);
+                    $drops[] = Item::get(Item::LEATHER, 0, 1);
                     break;
             }
         }
