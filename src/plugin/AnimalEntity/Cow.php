@@ -26,7 +26,6 @@ class Cow extends Animal{
         }else{
             $this->setHealth($this->getMaxHealth());
         }
-        $this->lastTick = microtime(true);
         $this->created = true;
     }
 

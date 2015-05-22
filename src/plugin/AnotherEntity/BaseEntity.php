@@ -25,7 +25,6 @@ abstract class BaseEntity extends Creature{
     public $stayVec = null;
     public $stayTime = 0;
 
-    protected $lastTick = 0;
     protected $moveTime = 0;
     protected $created = false;
     /** @var Vector3 */
@@ -34,7 +33,6 @@ abstract class BaseEntity extends Creature{
     protected $attacker = null;
 
     private $movement = true;
-    private $lastMove = null;
 
     public abstract function updateTick();
 
@@ -133,7 +131,7 @@ abstract class BaseEntity extends Creature{
         }
         $pk = new EntityEventPacket();
         $pk->eid = $this->getId();
-        $pk->event = !$this->isAlive() ? 3 : 2;
+        $pk->event = $this->isAlive() ? 2 : 3;
         Server::broadcastPacket($this->hasSpawned, $pk->setChannel(Network::CHANNEL_WORLD_EVENTS));
     }
 
@@ -164,9 +162,8 @@ abstract class BaseEntity extends Creature{
     }
 
     public function move($dx, $dz, $dy = 0){
-        $tick = (microtime(true) - $this->lastMove) * 20;
-        if($dy === 0 && !$this->onGround && $this->lastMove !== null){
-            $this->motionY -= $this->gravity * $tick;
+        if($dy === 0 && !$this->onGround && $this->lastY !== null){
+            $this->motionY -= $this->gravity;
             $dy = $this->motionY;
         }
         $movX = $dx;
@@ -176,17 +173,6 @@ abstract class BaseEntity extends Creature{
         foreach($list as $target){
             if(!$target instanceof Block && !$target instanceof Entity) continue;
             $bb = $target->getBoundingBox();
-            if( //점프는 구현중에 있음
-                $target instanceof Block
-                && $this->lastMove !== null
-                && $dy === 0 //y 좌표가 다른방식에 의해 수정되는중이 아님
-                && $this->boundingBox->minY >= $bb->minY //최하의 y좌표 체킹
-                && $target->distanceSquared($this) <= 1 //그 블럭과의 거리
-                && $bb->maxY - $bb->minY <= 1 //블럭의 높이
-            ){ //왜 점프가 안될까... ㅠㅠ
-                $dy = 0.65;
-                $this->motionY = 0;
-            }
             if($this->boundingBox->maxY > $bb->minY and $this->boundingBox->minY < $bb->maxY){
                 if($this->boundingBox->maxZ > $bb->minZ && $this->boundingBox->minZ < $bb->maxZ){
                     if($this->boundingBox->maxX + $dx >= $bb->minX and $this->boundingBox->maxX <= $bb->minX){
@@ -229,24 +215,32 @@ abstract class BaseEntity extends Creature{
         $this->isCollidedVertically = $movY != $dy;
         $this->isCollidedHorizontally = ($movX != $dx or $movZ != $dz);
         $this->isCollided = ($this->isCollidedHorizontally or $this->isCollidedVertically);
-
-        $this->lastMove = microtime(true);
     }
 
-    public function knockBackCheck($tick = 1){
+    public function knockBackCheck(){
         if(!$this->attacker instanceof Entity) return false;
 
         if($this->moveTime > 5) $this->moveTime = 5;
-        $this->moveTime -= $tick;
+
+        --$this->moveTime;
         $target = $this->attacker;
         $x = $target->x - $this->x;
-        $y = $target->y - $this->y;
         $z = $target->z - $this->z;
         $atn = atan2($z, $x);
-        $this->move(-cos($atn) * 0.3 * $tick, -sin($atn) * 0.3 * $tick, $this->moveTime > 3 ? 0.6 * $tick : 0);
-        $this->setRotation(rad2deg(atan2($z, $x) - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
-        if((int) $this->moveTime <= 0) $this->attacker = null;
-        $this->entityBaseTick($tick);
+        $motionY = [
+            4 => 0.92,
+            3 => 0.25,
+            2 => 0,
+            1 => 0,
+            0 => 0,
+        ];
+        $this->move(-cos($atn) * 0.32, -sin($atn) * 0.32, isset($motionY[$this->moveTime]) ? $motionY[$this->moveTime] : 0);
+
+        if((int) $this->moveTime <= 0){
+            $this->attacker = null;
+        }
+
+        $this->entityBaseTick();
         $this->updateMovement();
         $this->lastTick = microtime(true);
         return true;

@@ -28,7 +28,6 @@ class Pig extends Animal implements Rideable{
         }else{
             $this->setHealth($this->getMaxHealth());
         }
-        $this->lastTick = microtime(true);
         $this->created = true;
     }
 

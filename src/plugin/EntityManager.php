@@ -36,7 +36,6 @@ use pocketmine\nbt\tag\Double;
 use pocketmine\nbt\tag\Enum;
 use pocketmine\nbt\tag\Float;
 use pocketmine\Player;
-use pocketmine\plugin\Plugin;
 use pocketmine\plugin\PluginBase;
 use pocketmine\scheduler\PluginTask;
 use pocketmine\Server;
@@ -74,7 +73,7 @@ class EntityManager extends PluginBase implements Listener{
     }
 
     public function onEnable(){
-        $this->path = self::core()->getDataPath() . "plugins/EntityManager/";
+        $this->path = $this->getServer()->getDataPath() . "plugins/EntityManager/";
         if(!is_dir($this->path)) mkdir($this->path);
         if(file_exists($this->path. "EntityData.yml")){
             self::$entityData = yaml_parse($this->yaml($this->path . "EntityData.yml"));
@@ -113,9 +112,10 @@ class EntityManager extends PluginBase implements Listener{
             if(!Item::isCreativeItem($item)) Item::addCreativeItem($item);
         }
 
-        self::core()->getPluginManager()->registerEvents($this, $this);
-        self::core()->getLogger()->info(TextFormat::GOLD . "[EntityManager]플러그인이 활성화 되었습니다");
-        self::core()->getScheduler()->scheduleRepeatingTask(new EntityManagerTask([$this, "updateEntity"], $this), 1);
+        $this->getServer()->getPluginManager()->registerEvents($this, $this);
+        $this->getServer()->getLogger()->info(TextFormat::GOLD . "[EntityManager]플러그인이 활성화 되었습니다");
+        $this->getServer()->getScheduler()->scheduleRepeatingTask(new SpawnEntityTask($this), 1);
+        $this->getServer()->getScheduler()->scheduleRepeatingTask(new UpdateEntityTask($this), 1);
     }
 
     public function onDisable(){
@@ -124,10 +124,6 @@ class EntityManager extends PluginBase implements Listener{
 
     public static function yaml($file){
         return preg_replace("#^([ ]*)([a-zA-Z_]{1}[^\:]*)\:#m", "$1\"$2\":", file_get_contents($file));
-    }
-
-    public static function core(){
-        return Server::getInstance();
     }
 
     /**
@@ -146,7 +142,7 @@ class EntityManager extends PluginBase implements Listener{
     public static function clearEntity(Level $level = null, $type = []){
         if(!is_array($type)) return false;
         $type = count($type) === 0 ? [BaseEntity::class] : $type;
-        $level = $level === null ? self::core()->getDefaultLevel() : $level;
+        $level = $level === null ? Server::getInstance()->getDefaultLevel() : $level;
         foreach($level->getEntities() as $id => $ent){
             foreach($type as $t){
                 if(is_a(get_class($ent), $t, true)){
@@ -223,61 +219,6 @@ class EntityManager extends PluginBase implements Listener{
         }
     }
 
-    public function updateEntity(){
-        if(++$this->tick >= self::getData("spawn.tick", 150)){
-            $this->tick = 0;
-            foreach(self::$spawnerData as $pos => $data){
-                if(mt_rand(1, 3) > 1) continue;
-                if(count($data["mob-list"]) === 0){
-                    unset(self::$spawnerData[$pos]);
-                    continue;
-                }
-                $radius = (int) $data["radius"];
-                $level = self::core()->getDefaultLevel();
-                $pos = (new Vector3(...explode(":", $pos)))->add(mt_rand(-$radius, $radius), mt_rand(-$radius, $radius), mt_rand(-$radius, $radius));
-                $bb = $level->getBlock($pos)->getBoundingBox();
-                $bb1 = $level->getBlock($pos->add(0, 1))->getBoundingBox();
-                $bb2 = $level->getBlock($pos->add(0, -1))->getBoundingBox();
-                if(
-                    ($bb !== null and $bb->maxY - $bb->minY > 0)
-                    || ($bb1 !== null and $bb1->maxY - $bb1->minY > 0)
-                    || ($bb2 !== null and $bb2->maxY - $bb2->minY > 1)
-                ) continue;
-                self::createEntity($data["mob-list"][mt_rand(0, count($data["mob-list"]) - 1)], Position::fromObject($pos, $level));
-            }
-            if(self::getData("spawn.auto", true)) foreach(self::core()->getOnlinePlayers() as $player){
-                if(mt_rand(1, 10) > 1) continue;
-                $level = $player->getLevel();
-                $radius = self::getData("spawn.radius", 25);
-                $pos = $player->add(mt_rand(-$radius, $radius), 0, mt_rand(-$radius, $radius));
-                $pos->y = $level->getHighestBlockAt($pos->x, $pos->z);
-                $ent = [
-                    ["Cow", "Pig", "Sheep", "Chicken", null, null],
-                    ["Zombie", "Creeper", "Skeleton", "Spider", "PigZombie", "Enderman"]
-                ];
-                self::createEntity($ent[mt_rand(0, 1)][mt_rand(0, 5)], Position::fromObject($pos, $level));
-            }
-        }
-        $per = $this->getServer()->getTickUsage();
-        if($per <= 60){
-            $maxTick = 1;
-        }elseif($per <= 70){
-            $maxTick = 2;
-        }elseif($per <= 80){
-            $maxTick = 3;
-        }elseif($per <= 90){
-            $maxTick = 4;
-        }else{
-            $maxTick = 5;
-        }
-        if(++$this->entTick >= $maxTick){
-            foreach(self::getEntities() as $entity){
-                if($entity->isCreated()) $entity->updateTick();
-            }
-            $this->entTick = 0;
-        }
-    }
-
     public function EntitySpawnEvent(EntitySpawnEvent $ev){
         $entity = $ev->getEntity();
         if($entity instanceof Animal && !self::getData("spawn.animal", true)){
@@ -351,8 +292,8 @@ class EntityManager extends PluginBase implements Listener{
                     break;
                 }
                 if(count($sub) >= 4){
-                    $level = self::core()->getDefaultLevel();
-                    if(isset($sub[4]) && ($k = self::core()->getLevelByName($sub[4]))){
+                    $level = $this->getServer()->getDefaultLevel();
+                    if(isset($sub[4]) && ($k = $this->getServer()->getLevelByName($sub[4]))){
                         $level = $k;
                     }elseif($i instanceof Player){
                         $level = $i->getLevel(); 
@@ -375,17 +316,61 @@ class EntityManager extends PluginBase implements Listener{
 
 }
 
-class EntityManagerTask extends PluginTask{
+class UpdateEntityTask extends PluginTask{
 
-    protected $callable;
-
-    public function __construct(callable $callable, Plugin $owner){
-        $this->callable = $callable;
+    public function __construct(EntityManager $owner){
         $this->owner = $owner;
     }
 
     public function onRun($currentTicks){
-        call_user_func_array($this->callable, []);
+        foreach(EntityManager::getEntities() as $entity){
+            if($entity->isCreated()) $entity->updateTick();
+        }
+    }
+
+}
+
+class SpawnEntityTask extends PluginTask{
+
+    public function __construct(EntityManager $owner){
+        $this->owner = $owner;
+    }
+
+    public function onRun($currentTicks){
+        if(++$this->owner->tick >= EntityManager::getData("spawn.tick", 150)){
+            $this->owner->tick = 0;
+            foreach(EntityManager::$spawnerData as $pos => $data){
+                if(mt_rand(1, 3) > 1) continue;
+                if(count($data["mob-list"]) === 0){
+                    unset(EntityManager::$spawnerData[$pos]);
+                    continue;
+                }
+                $radius = (int) $data["radius"];
+                $level = $this->owner->getServer()->getDefaultLevel();
+                $pos = (new Vector3(...explode(":", $pos)))->add(mt_rand(-$radius, $radius), mt_rand(-$radius, $radius), mt_rand(-$radius, $radius));
+                $bb = $level->getBlock($pos)->getBoundingBox();
+                $bb1 = $level->getBlock($pos->add(0, 1))->getBoundingBox();
+                $bb2 = $level->getBlock($pos->add(0, -1))->getBoundingBox();
+                if(
+                    ($bb !== null and $bb->maxY - $bb->minY > 0)
+                    || ($bb1 !== null and $bb1->maxY - $bb1->minY > 0)
+                    || ($bb2 !== null and $bb2->maxY - $bb2->minY > 1)
+                ) continue;
+                EntityManager::createEntity($data["mob-list"][mt_rand(0, count($data["mob-list"]) - 1)], Position::fromObject($pos, $level));
+            }
+            if(EntityManager::getData("spawn.auto", true)) foreach($this->owner->getServer()->getOnlinePlayers() as $player){
+                if(mt_rand(1, 10) > 1) continue;
+                $level = $player->getLevel();
+                $radius = EntityManager::getData("spawn.radius", 25);
+                $pos = $player->add(mt_rand(-$radius, $radius), 0, mt_rand(-$radius, $radius));
+                $pos->y = $level->getHighestBlockAt($pos->x, $pos->z);
+                $ent = [
+                    ["Cow", "Pig", "Sheep", "Chicken", null, null],
+                    ["Zombie", "Creeper", "Skeleton", "Spider", "PigZombie", "Enderman"]
+                ];
+                EntityManager::createEntity($ent[mt_rand(0, 1)][mt_rand(0, 5)], Position::fromObject($pos, $level));
+            }
+        }
     }
 
 }

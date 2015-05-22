@@ -20,7 +20,7 @@ abstract class Animal extends BaseEntity implements Ageable{
         return $this->getDataFlag(self::DATA_AGEABLE_FLAGS, self::DATA_FLAG_BABY);
     }
 
-    public function updateMove($tick = 1){
+    public function updateMove(){
         $target = null;
         if($this->isMovement()){
             $target = $this->getTarget();
@@ -30,10 +30,10 @@ abstract class Animal extends BaseEntity implements Ageable{
             $atn = atan2($z, $x);
             if($this->stayTime > 0){
                 $this->move(0, 0);
-                $this->stayTime -= $tick;
+                --$this->stayTime;
                 if($this->stayTime <= 0) $this->stayVec = null;
             }else{
-                $this->move(cos($atn) * 0.07 * $tick, sin($atn) * 0.07 * $tick);
+                $this->move(cos($atn) * 0.07, sin($atn) * 0.07);
             }
             $this->setRotation(rad2deg($atn - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
         }else{
@@ -43,17 +43,15 @@ abstract class Animal extends BaseEntity implements Ageable{
     }
 
     public function updateTick(){
-        $tick = (microtime(true) - $this->lastTick) * 20;
         if(!$this->isAlive()){
-            $this->deadTicks += $tick;
-            if((int) $this->deadTicks >= 23) $this->close();
+            if(--$this->deadTicks >= 23) $this->close();
             return;
         }
 
-        if($this->knockBackCheck($tick)) return;
+        if($this->knockBackCheck()) return;
 
-        $this->moveTime += $tick;
-        $target = $this->updateMove($tick);
+        ++$this->moveTime;
+        $target = $this->updateMove();
         if($target instanceof Player){
             if($this->distance($target) <= 2){
                 $this->pitch = 22;
@@ -68,9 +66,8 @@ abstract class Animal extends BaseEntity implements Ageable{
                 $this->moveTime += 20;
             }
         }
-        $this->entityBaseTick($tick);
+        $this->entityBaseTick();
         $this->updateMovement();
-        $this->lastTick = microtime(true);
     }
 
 }

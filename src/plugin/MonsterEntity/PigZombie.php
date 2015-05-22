@@ -33,7 +33,6 @@ class PigZombie extends Monster{
             $this->angry = (int) $this->namedtag["Angry"];
         }
         $this->setDamage([0, 5, 9, 13]);
-        $this->lastTick = microtime(true);
         $this->created = true;
     }
 
@@ -55,19 +54,17 @@ class PigZombie extends Monster{
     }
 
     public function updateTick(){
-        $tick = (microtime(true) - $this->lastTick) * 20;
         if(!$this->isAlive()){
-            $this->deadTicks += $tick;
-            if((int) $this->deadTicks >= 23) $this->close();
+            if(++$this->deadTicks >= 23) $this->close();
             return;
         }
 
-        $this->attackDelay += $tick;
-        if($this->knockBackCheck($tick)) return;
+        ++$this->attackDelay;
+        if($this->knockBackCheck()) return;
 
-        $this->moveTime += $tick;
-        if($this->angry > 0) $this->angry -= min($tick, $this->angry);
-        $target = $this->updateMove($tick);
+        ++$this->moveTime;
+        if($this->angry > 0) --$this->angry;
+        $target = $this->updateMove();
         if($target instanceof Player){
             if($this->attackDelay >= 16 && $this->distance($target) <= 1.18){
                 $this->attackDelay = 0;
@@ -83,9 +80,8 @@ class PigZombie extends Monster{
                 $this->moveTime += 20;
             }
         }
-        $this->entityBaseTick($tick);
+        $this->entityBaseTick();
         $this->updateMovement();
-        $this->lastTick = microtime(true);
     }
 
     public function getDrops(){
@@ -93,13 +89,13 @@ class PigZombie extends Monster{
         if($this->lastDamageCause instanceof EntityDamageByEntityEvent){
             switch(mt_rand(0, 2)){
                 case 0 :
-                    $drops [] = Item::get(Item::FLINT, 0, 1);
+                    $drops[] = Item::get(Item::FLINT, 0, 1);
                     break;
                 case 1 :
-                    $drops [] = Item::get(Item::GUNPOWDER, 0, 1);
+                    $drops[] = Item::get(Item::GUNPOWDER, 0, 1);
                     break;
                 case 2 :
-                    $drops [] = Item::get(Item::REDSTONE_DUST, 0, 1);
+                    $drops[] = Item::get(Item::REDSTONE_DUST, 0, 1);
                     break;
             }
         }

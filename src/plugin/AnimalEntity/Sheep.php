@@ -28,7 +28,6 @@ class Sheep extends Animal implements Colorable{
         }else{
             $this->setHealth($this->getMaxHealth());
         }
-        $this->lastTick = microtime(true);
         $this->created = true;
     }
 

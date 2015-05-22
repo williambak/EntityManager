@@ -23,7 +23,6 @@ class Creeper extends Monster implements Explosive{
     public function initEntity(){
         parent::initEntity();
 
-        $this->lastTick = microtime(true);
         if(isset($this->namedtag->BombTime)){
             $this->bombTime = (int) $this->namedtag["BombTime"];
         }
@@ -58,18 +57,16 @@ class Creeper extends Monster implements Explosive{
     }
 
     public function updateTick(){
-        $tick = (microtime(true) - $this->lastTick) * 20;
         if(!$this->isAlive()){
-            $this->deadTicks += $tick;
-            if((int) $this->deadTicks >= 23) $this->close();
+            if(++$this->deadTicks >= 23) $this->close();
             return;
         }
 
-        $this->attackDelay += $tick;
-        if($this->knockBackCheck($tick)) return;
+        ++$this->attackDelay;
+        if($this->knockBackCheck()) return;
 
-        $this->moveTime += $tick;
-        $target = $this->updateMove($tick);
+        ++$this->moveTime;
+        $target = $this->updateMove();
         if($target instanceof Player){
             if($this->distance($target) > 6.2){
                 if($this->bombTime > 0) $this->bombTime -= min(2, $this->bombTime);
@@ -87,9 +84,8 @@ class Creeper extends Monster implements Explosive{
                 $this->moveTime += 20;
             }
         }
-        $this->entityBaseTick($tick);
+        $this->entityBaseTick();
         $this->updateMovement();
-        $this->lastTick = microtime(true);
     }
 
     public function getDrops(){

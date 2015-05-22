@@ -25,7 +25,6 @@ class Spider extends Monster{
             $this->setHealth($this->getMaxHealth());
         }
         $this->setDamage([0, 2, 2, 3]);
-        $this->lastTick = microtime(true);
         $this->created = true;
     }
 
@@ -34,18 +33,16 @@ class Spider extends Monster{
     }
 
     public function updateTick(){
-        $tick = (microtime(true) - $this->lastTick) * 20;
         if(!$this->isAlive()){
-            $this->deadTicks += $tick;
-            if((int) $this->deadTicks >= 23) $this->close();
+            if(++$this->deadTicks >= 23) $this->close();
             return;
         }
 
-        $this->attackDelay += $tick;
-        if($this->knockBackCheck($tick)) return;
+        ++$this->attackDelay;
+        if($this->knockBackCheck()) return;
 
-        $this->moveTime += $tick;
-        $target = $this->updateMove($tick);
+        ++$this->moveTime;
+        $target = $this->updateMove();
         if($target instanceof Player){
             if($this->attackDelay >= 16 && $this->distance($target) <= 1.1){
                 $this->attackDelay = 0;
@@ -59,9 +56,8 @@ class Spider extends Monster{
                 $this->moveTime += 20;
             }
         }
-        $this->entityBaseTick($tick);
+        $this->entityBaseTick();
         $this->updateMovement();
-        $this->lastTick = microtime(true);
     }
 
     public function getDrops(){

@@ -28,7 +28,6 @@ class CustomEntity extends Monster{
             $this->namedtag->Health = new Short("Health", $this->getMaxHealth());
         }
         $this->setHealth((int) $this->namedtag["Health"]);
-        $this->lastTick = microtime(true);
         $this->created = true;
     }
 
@@ -57,18 +56,16 @@ class CustomEntity extends Monster{
     }
 
     public function updateTick(){
-        $tick = (microtime(true) - $this->lastTick) * 20;
         if(!$this->isAlive()){
-            $this->deadTicks += $tick;
-            if($this->deadTicks >= 25) $this->close();
+            if(++$this->deadTicks >= 23) $this->close();
             return;
         }
 
-        $this->attackDelay += $tick;
-        if($this->knockBackCheck($tick)) return;
+        ++$this->attackDelay;
+        if($this->knockBackCheck()) return;
 
-        $this->moveTime += $tick;
-        $target = $this->updateMove($tick);
+        ++$this->moveTime;
+        $target = $this->updateMove();
         if($target instanceof Player){
             if($this->attackDelay >= 16 && $this->distanceSquared($target) <= 0.81){
                 $this->attackDelay = 0;
@@ -82,9 +79,8 @@ class CustomEntity extends Monster{
                 $this->moveTime += 20;
             }
         }
-        $this->entityBaseTick($tick);
+        $this->entityBaseTick();
         $this->updateMovement();
-        $this->lastTick = microtime(true);
     }
 
     public function getDrops(){
