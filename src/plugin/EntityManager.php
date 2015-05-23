@@ -261,8 +261,29 @@ class EntityManager extends PluginBase implements Listener{
         $pos = $ev->getBlock()->getSide($ev->getFace());
 
         if($item->getId() === Item::SPAWN_EGG){
-            self::createEntity($item->getDamage(), $pos);
-            if($player->isSurvival()){
+            if(($entity = self::createEntity($item->getDamage(), $pos)) == null){
+                $chunk = $pos->getLevel()->getChunk($pos->x >> 4, $pos->z >> 4, true);
+                if($chunk !== null && $chunk->isGenerated()){
+                    $nbt = new Compound("", [
+                        "Pos" => new Enum("Pos", [
+                            new Double("", $pos->x),
+                            new Double("", $pos->y),
+                            new Double("", $pos->z)
+                        ]),
+                        "Motion" => new Enum("Motion", [
+                            new Double("", 0),
+                            new Double("", 0),
+                            new Double("", 0)
+                        ]),
+                        "Rotation" => new Enum("Rotation", [
+                            new Float("", 0),
+                            new Float("", 0)
+                        ]),
+                    ]);
+                    $entity = Entity::createEntity($item->getDamage(), $chunk, $nbt);
+                }
+            }
+            if($player->isSurvival() && $entity != null){
                 $item->count--;
                 $player->getInventory()->setItemInHand($item);
             }
