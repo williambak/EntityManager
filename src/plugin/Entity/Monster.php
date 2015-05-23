@@ -1,8 +1,7 @@
 <?php
 
-namespace plugin\MonsterEntity;
+namespace plugin\Entity;
 
-use plugin\AnotherEntity\BaseEntity;
 use pocketmine\block\Water;
 use pocketmine\entity\Effect;
 use pocketmine\entity\Entity;

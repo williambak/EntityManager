@@ -1,26 +1,28 @@
 <?php
 
-namespace plugin\AnimalEntity;
+namespace plugin\Entity;
 
+use pocketmine\entity\Colorable;
 use pocketmine\item\Item;
 use pocketmine\math\Vector3;
 use pocketmine\Player;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 
-class Cow extends Animal{
-    const NETWORK_ID = 11;
+class Sheep extends Animal implements Colorable{
+    const NETWORK_ID = 13;
 
     public $width = 1.6;
+    public $length = 0.8;
     public $height = 1.12;
 
     public function getName(){
-        return "소";
+        return "양";
     }
 
     public function initEntity(){
         parent::initEntity();
 
-        $this->setMaxHealth(10);
+        $this->setMaxHealth(8);
         if(isset($this->namedtag->Health)){
             $this->setHealth((int) $this->namedtag["Health"]);
         }else{
@@ -40,7 +42,7 @@ class Cow extends Animal{
         foreach($this->hasSpawned as $p){
             $slot = $p->getInventory()->getItemInHand();
             if(($distance = $this->distanceSquared($p)) <= 36 and $p->spawned and $p->isAlive() and !$p->closed){
-                if($distance < $nearDistance && $slot->getID() == Item::WHEAT){
+                if($distance < $nearDistance && $slot->getId() == Item::SEEDS){
                     $target = $p;
                     $nearDistance = $distance;
                     continue;
@@ -61,17 +63,10 @@ class Cow extends Animal{
     }
 
     public function getDrops(){
-        $drops = [];
         if($this->lastDamageCause instanceof EntityDamageByEntityEvent){
-            switch(mt_rand(0, 1)){
-                case 0 :
-                    $drops[] = Item::get(Item::RAW_BEEF, 0, 1);
-                    break;
-                case 1 :
-                    $drops[] = Item::get(Item::LEATHER, 0, 1);
-                    break;
-            }
+            return [Item::get(Item::WOOL, mt_rand(0, 15), 1)];
         }
-        return $drops;
+        return [];
     }
+
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace plugin\MonsterEntity;
+namespace plugin\Entity;
 
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;

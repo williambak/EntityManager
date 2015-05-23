@@ -1,6 +1,6 @@
 <?php
 
-namespace plugin\AnotherEntity;
+namespace plugin\Entity;
 
 use pocketmine\block\Block;
 use pocketmine\entity\Entity;

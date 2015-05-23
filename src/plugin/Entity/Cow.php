@@ -1,22 +1,20 @@
 <?php
 
-namespace plugin\AnimalEntity;
+namespace plugin\Entity;
 
-use pocketmine\entity\Rideable;
 use pocketmine\item\Item;
 use pocketmine\math\Vector3;
 use pocketmine\Player;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 
-class Pig extends Animal implements Rideable{
-    const NETWORK_ID = 12;
+class Cow extends Animal{
+    const NETWORK_ID = 11;
 
     public $width = 1.6;
-    public $length = 0.8;
     public $height = 1.12;
 
     public function getName(){
-        return "돼지";
+        return "소";
     }
 
     public function initEntity(){
@@ -42,7 +40,7 @@ class Pig extends Animal implements Rideable{
         foreach($this->hasSpawned as $p){
             $slot = $p->getInventory()->getItemInHand();
             if(($distance = $this->distanceSquared($p)) <= 36 and $p->spawned and $p->isAlive() and !$p->closed){
-                if($distance < $nearDistance && $slot->getID() == Item::CARROT){
+                if($distance < $nearDistance && $slot->getID() == Item::WHEAT){
                     $target = $p;
                     $nearDistance = $distance;
                     continue;
@@ -63,10 +61,17 @@ class Pig extends Animal implements Rideable{
     }
 
     public function getDrops(){
+        $drops = [];
         if($this->lastDamageCause instanceof EntityDamageByEntityEvent){
-            return [Item::get(Item::RAW_PORKCHOP, 0, 1)];
+            switch(mt_rand(0, 1)){
+                case 0 :
+                    $drops[] = Item::get(Item::RAW_BEEF, 0, 1);
+                    break;
+                case 1 :
+                    $drops[] = Item::get(Item::LEATHER, 0, 1);
+                    break;
+            }
         }
-        return [];
+        return $drops;
     }
-
 }

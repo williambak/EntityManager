@@ -1,6 +1,6 @@
 <?php
 
-namespace plugin\MonsterEntity;
+namespace plugin\Entity;
 
 use pocketmine\entity\Entity;
 use pocketmine\entity\Projectile;

@@ -1,8 +1,7 @@
 <?php
 
-namespace plugin\AnimalEntity;
+namespace plugin\Entity;
 
-use plugin\AnotherEntity\BaseEntity;
 use pocketmine\entity\Ageable;
 use pocketmine\math\Vector3;
 use pocketmine\Player;

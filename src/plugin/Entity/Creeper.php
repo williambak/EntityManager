@@ -1,56 +1,59 @@
 <?php
 
-namespace plugin\MonsterEntity;
+namespace plugin\Entity;
 
+use pocketmine\entity\Explosive;
+use pocketmine\event\entity\ExplosionPrimeEvent;
+use pocketmine\level\Explosion;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Int;
 use pocketmine\Player;
-use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\item\Item;
 
-class PigZombie extends Monster{
-    const NETWORK_ID = 36;
+class Creeper extends Monster implements Explosive{
+    const NETWORK_ID = 33;
 
     public $width = 0.72;
-    public $length = 0.6;
     public $height = 1.8;
     public $eyeHeight = 1.62;
 
-    private $angry = 0;
+    private $bombTime = 0;
 
     public function initEntity(){
         parent::initEntity();
 
-        $this->fireProof = true;
-        $this->setMaxHealth(22);
+        if(isset($this->namedtag->BombTime)){
+            $this->bombTime = (int) $this->namedtag["BombTime"];
+        }
         if(isset($this->namedtag->Health)){
             $this->setHealth((int) $this->namedtag["Health"]);
         }else{
             $this->setHealth($this->getMaxHealth());
         }
-        if(isset($this->namedtag->Angry)){
-            $this->angry = (int) $this->namedtag["Angry"];
-        }
-        $this->setDamage([0, 5, 9, 13]);
         $this->created = true;
     }
 
     public function saveNBT(){
-        $this->namedtag->Angry = new Int("Angry", $this->angry);
+        $this->namedtag->BombTime = new Int("BombTime", $this->bombTime);
         parent::saveNBT();
     }
 
     public function getName(){
-        return "좀비피그맨";
+        return "크리퍼";
     }
 
-    public function isAngry(){
-        return $this->angry > 0;
-    }
+    public function explode(){
+        $this->server->getPluginManager()->callEvent($ev = new ExplosionPrimeEvent($this, 3.2));
 
-    public function setAngry($val){
-        $this->angry = (int) $val;
+        if(!$ev->isCancelled()){
+            $explosion = new Explosion($this, $ev->getForce(), $this);
+            if($ev->isBlockBreaking()){
+                $explosion->explodeA();
+            }
+            $explosion->explodeB();
+            $this->close();
+        }
     }
 
     public function updateTick(){
@@ -63,20 +66,21 @@ class PigZombie extends Monster{
         if($this->knockBackCheck()) return;
 
         ++$this->moveTime;
-        if($this->angry > 0) --$this->angry;
         $target = $this->updateMove();
         if($target instanceof Player){
-            if($this->attackDelay >= 16 && $this->distance($target) <= 1.18){
-                $this->attackDelay = 0;
-                $ev = new EntityDamageByEntityEvent($this, $target, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $this->getDamage()[$this->server->getDifficulty()]);
-                $target->attack($ev->getFinalDamage(), $ev);
+            if($this->distance($target) > 6.2){
+                if($this->bombTime > 0) $this->bombTime -= min(2, $this->bombTime);
+            }else{
+                $this->bombTime++;
+                if($this->bombTime >= 58){
+                    $this->explode();
+                    return;
+                }
             }
-        }
-        elseif($target instanceof Vector3){
+        }elseif($target instanceof Vector3){
             if($this->distance($target) <= 1){
                 $this->moveTime = 800;
-            }
-            elseif($this->x == $this->lastX or $this->z == $this->lastZ){
+            }elseif($this->x === $this->lastX or $this->z === $this->lastZ){
                 $this->moveTime += 20;
             }
         }

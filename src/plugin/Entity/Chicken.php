@@ -1,28 +1,26 @@
 <?php
 
-namespace plugin\AnimalEntity;
+namespace plugin\Entity;
 
-use pocketmine\entity\Colorable;
 use pocketmine\item\Item;
 use pocketmine\math\Vector3;
 use pocketmine\Player;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 
-class Sheep extends Animal implements Colorable{
-    const NETWORK_ID = 13;
+class Chicken extends Animal{
+    const NETWORK_ID = 10;
 
-    public $width = 1.6;
-    public $length = 0.8;
-    public $height = 1.12;
+    public $width = 0.4;
+    public $height = 0.75;
 
     public function getName(){
-        return "양";
+        return "닭";
     }
 
     public function initEntity(){
         parent::initEntity();
 
-        $this->setMaxHealth(8);
+        $this->setMaxHealth(4);
         if(isset($this->namedtag->Health)){
             $this->setHealth((int) $this->namedtag["Health"]);
         }else{
@@ -42,7 +40,7 @@ class Sheep extends Animal implements Colorable{
         foreach($this->hasSpawned as $p){
             $slot = $p->getInventory()->getItemInHand();
             if(($distance = $this->distanceSquared($p)) <= 36 and $p->spawned and $p->isAlive() and !$p->closed){
-                if($distance < $nearDistance && $slot->getId() == Item::SEEDS){
+                if($distance < $nearDistance && $slot->getID() == Item::SEEDS){
                     $target = $p;
                     $nearDistance = $distance;
                     continue;
@@ -63,10 +61,21 @@ class Sheep extends Animal implements Colorable{
     }
 
     public function getDrops(){
+        $drops = [];
         if($this->lastDamageCause instanceof EntityDamageByEntityEvent){
-            return [Item::get(Item::WOOL, mt_rand(0, 15), 1)];
+            switch(mt_rand(0, 2)){
+                case 0 :
+                    $drops[] = Item::get(Item::RAW_CHICKEN, 0, 1);
+                    break;
+                case 1 :
+                    $drops[] = Item::get(Item::EGG, 0, 1);
+                    break;
+                case 2 :
+                    $drops[] = Item::get(Item::FEATHER, 0, 1);
+                    break;
+            }
         }
-        return [];
+        return $drops;
     }
 
 }

@@ -1,8 +1,7 @@
 <?php
 
-namespace plugin\AnotherEntity;
+namespace plugin\Entity;
 
-use plugin\MonsterEntity\PigZombie;
 use pocketmine\block\Block;
 use pocketmine\entity\Creature;
 use pocketmine\entity\Entity;

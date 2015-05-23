@@ -2,20 +2,22 @@
 
 namespace plugin;
 
-use plugin\AnimalEntity\Animal;
-use plugin\AnimalEntity\Chicken;
-use plugin\AnimalEntity\Cow;
-use plugin\AnimalEntity\Pig;
-use plugin\AnimalEntity\Sheep;
-use plugin\AnotherEntity\BaseEntity;
-use plugin\AnotherEntity\Minecart;
-use plugin\MonsterEntity\Creeper;
-use plugin\MonsterEntity\Enderman;
-use plugin\MonsterEntity\Monster;
-use plugin\MonsterEntity\PigZombie;
-use plugin\MonsterEntity\Skeleton;
-use plugin\MonsterEntity\Spider;
-use plugin\MonsterEntity\Zombie;
+use plugin\Entity\Animal;
+use plugin\Entity\Chicken;
+use plugin\Entity\Cow;
+use plugin\Entity\Pig;
+use plugin\Entity\Sheep;
+use plugin\Entity\BaseEntity;
+use plugin\Entity\Minecart;
+use plugin\Entity\Creeper;
+use plugin\Entity\Enderman;
+use plugin\Entity\Monster;
+use plugin\Entity\PigZombie;
+use plugin\Entity\Skeleton;
+use plugin\Entity\Spider;
+use plugin\Entity\Zombie;
+use plugin\Task\SpawnEntityTask;
+use plugin\Task\UpdateEntityTask;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\entity\Arrow;
@@ -30,14 +32,12 @@ use pocketmine\item\Item;
 use pocketmine\level\Level;
 use pocketmine\level\Location;
 use pocketmine\level\Position;
-use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Compound;
 use pocketmine\nbt\tag\Double;
 use pocketmine\nbt\tag\Enum;
 use pocketmine\nbt\tag\Float;
 use pocketmine\Player;
 use pocketmine\plugin\PluginBase;
-use pocketmine\scheduler\PluginTask;
 use pocketmine\Server;
 use pocketmine\utils\TextFormat;
 
@@ -75,29 +75,30 @@ class EntityManager extends PluginBase implements Listener{
     public function onEnable(){
         $this->path = $this->getServer()->getDataPath() . "plugins/EntityManager/";
         if(!is_dir($this->path)) mkdir($this->path);
+        $data = [];
         if(file_exists($this->path. "EntityData.yml")){
-            self::$entityData = yaml_parse($this->yaml($this->path . "EntityData.yml"));
-        }else{
-            self::$entityData = [
-                "custom" =>[
-                    "name" => "CustomEntity",
-                    "type" => 32, //엔티티 타입
-                    "damage" => [0, 3, 4, 6], //난이도별 데미지
-                    "drops" => [], //죽을시 드롭할 아이템
-                ],
-                "entity" => [
-                    "explode" => true,
-                ],
-                "spawn" => [
-                    "auto" => true,
-                    "mob" => true,
-                    "animal" => true,
-                    "tick" => 150,
-                    "radius" => 25
-                ],
-            ];
-            file_put_contents($this->path . "EntityData.yml", yaml_emit(self::$entityData, YAML_UTF8_ENCODING));
+            $data = yaml_parse($this->yaml($this->path . "EntityData.yml"));
         }
+
+        self::$entityData = [
+            "custom" =>[
+                "name" => isset($data["custom"]["name"]) ? $data["custom"]["name"] : "CustomEntity",
+                "type" => isset($data["custom"]["type"]) ? $data["custom"]["type"] : 32, //엔티티 타입
+                "damage" => isset($data["custom"]["damage"]) ? $data["custom"]["damage"] : [0, 3, 4, 6], //난이도별 데미지
+                "drops" => isset($data["custom"]["drops"]) ? $data["custom"]["drops"] : [], //죽을시 드롭할 아이템
+            ],
+            "entity" => [
+                "explode" => isset($data["entity"]["explode"]) ? $data["entity"]["explode"] : true,
+            ],
+            "spawn" => [
+                "auto" => isset($data["spawn"]["auto"]) ? $data["spawn"]["auto"] : true,
+                "mob" => isset($data["spawn"]["mob"]) ? $data["spawn"]["mob"] : true,
+                "animal" => isset($data["spawn"]["animal"]) ? $data["spawn"]["animal"] : true,
+                "tick" => isset($data["spawn"]["tick"]) ? $data["spawn"]["tick"] : 150,
+                "radius" => isset($data["spawn"]["radius"]) ? $data["spawn"]["radius"] : 25
+            ],
+        ];
+        file_put_contents($this->path . "EntityData.yml", yaml_emit(self::$entityData, YAML_UTF8_ENCODING));
 
         if(file_exists($this->path. "SpawnerData.yml")){
             self::$spawnerData = yaml_parse($this->yaml($this->path . "SpawnerData.yml"));
@@ -114,8 +115,8 @@ class EntityManager extends PluginBase implements Listener{
 
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
         $this->getServer()->getLogger()->info(TextFormat::GOLD . "[EntityManager]플러그인이 활성화 되었습니다");
-        $this->getServer()->getScheduler()->scheduleRepeatingTask(new SpawnEntityTask($this), 1);
         $this->getServer()->getScheduler()->scheduleRepeatingTask(new UpdateEntityTask($this), 1);
+        $this->getServer()->getScheduler()->scheduleRepeatingTask(new SpawnEntityTask($this), EntityManager::getData("spawn.tick", 150));
     }
 
     public function onDisable(){
@@ -127,10 +128,19 @@ class EntityManager extends PluginBase implements Listener{
     }
 
     /**
+     * @param Level $level
+     *
      * @return BaseEntity[]
      */
-    public static function getEntities(){
-        return self::$entities;
+    public static function getEntities(Level $level = null){
+        /** @var BaseEntity[] $entities */
+        $entities = self::$entities;
+        if($level != null){
+            foreach($entities as $id => $entity){
+                if($entity->getLevel() !== $level) unset($entities[$id]);
+            }
+        }
+        return $entities;
     }
 
     /**
@@ -156,17 +166,17 @@ class EntityManager extends PluginBase implements Listener{
 
     /**
      * @param string $key
-     * @param mixed $default
+     *
      * @return mixed
      */
-    public static function getData($key, $default = false){
+    public static function getData($key){
         $vars = explode(".", $key);
         $base = array_shift($vars);
-        if(!isset(self::$entityData[$base])) return $default;
+        if(!isset(self::$entityData[$base])) return false;
         $base = self::$entityData[$base];
         while(count($vars) > 0){
             $baseKey = array_shift($vars);
-            if(!is_array($base) or !isset($base[$baseKey])) return $default;
+            if(!is_array($base) or !isset($base[$baseKey])) return false;
             $base = $base[$baseKey];
         }
         return $base;
@@ -236,7 +246,9 @@ class EntityManager extends PluginBase implements Listener{
 
     public function EntityDespawnEvent(EntityDespawnEvent $ev){
         $entity = $ev->getEntity();
-        if($entity instanceof BaseEntity or $entity instanceof Minecart) unset(self::$entities[$entity->getId()]);
+        if($entity instanceof BaseEntity or $entity instanceof Minecart){
+            unset(self::$entities[$entity->getId()]);
+        }
     }
 
     public function PlayerInteractEvent(PlayerInteractEvent $ev){
@@ -280,7 +292,7 @@ class EntityManager extends PluginBase implements Listener{
         $output = "[EntityManager]";
         switch($cmd->getName()){
             case "제거":
-                self::clearEntity($i instanceof Player ? $i->getLevel() : null, [Animal::class, Monster::class, Arrow::class]);
+                self::clearEntity($i instanceof Player ? $i->getLevel() : null, [BaseEntity::class, Arrow::class]);
                 $output .= "소환된 엔티티를 모두 제거했어요";
                 break;
             case "체크":
@@ -312,65 +324,6 @@ class EntityManager extends PluginBase implements Listener{
         }
         $i->sendMessage($output);
         return true;
-    }
-
-}
-
-class UpdateEntityTask extends PluginTask{
-
-    public function __construct(EntityManager $owner){
-        $this->owner = $owner;
-    }
-
-    public function onRun($currentTicks){
-        foreach(EntityManager::getEntities() as $entity){
-            if($entity->isCreated()) $entity->updateTick();
-        }
-    }
-
-}
-
-class SpawnEntityTask extends PluginTask{
-
-    public function __construct(EntityManager $owner){
-        $this->owner = $owner;
-    }
-
-    public function onRun($currentTicks){
-        if(++$this->owner->tick >= EntityManager::getData("spawn.tick", 150)){
-            $this->owner->tick = 0;
-            foreach(EntityManager::$spawnerData as $pos => $data){
-                if(mt_rand(1, 3) > 1) continue;
-                if(count($data["mob-list"]) === 0){
-                    unset(EntityManager::$spawnerData[$pos]);
-                    continue;
-                }
-                $radius = (int) $data["radius"];
-                $level = $this->owner->getServer()->getDefaultLevel();
-                $pos = (new Vector3(...explode(":", $pos)))->add(mt_rand(-$radius, $radius), mt_rand(-$radius, $radius), mt_rand(-$radius, $radius));
-                $bb = $level->getBlock($pos)->getBoundingBox();
-                $bb1 = $level->getBlock($pos->add(0, 1))->getBoundingBox();
-                $bb2 = $level->getBlock($pos->add(0, -1))->getBoundingBox();
-                if(
-                    ($bb !== null and $bb->maxY - $bb->minY > 0)
-                    || ($bb1 !== null and $bb1->maxY - $bb1->minY > 0)
-                    || ($bb2 !== null and $bb2->maxY - $bb2->minY > 1)
-                ) continue;
-                EntityManager::createEntity($data["mob-list"][mt_rand(0, count($data["mob-list"]) - 1)], Position::fromObject($pos, $level));
-            }
-            if(EntityManager::getData("spawn.auto", true)) foreach($this->owner->getServer()->getOnlinePlayers() as $player){
-                if(mt_rand(1, 10) > 1) continue;
-                $level = $player->getLevel();
-                $radius = EntityManager::getData("spawn.radius", 25);
-                $pos = $player->add(mt_rand(-$radius, $radius), 0, mt_rand(-$radius, $radius));
-                $pos->y = $level->getHighestBlockAt($pos->x, $pos->z);
-                $ent = [
-                    ["Cow", "Pig", "Sheep", "Chicken", null, null],
-                    ["Zombie", "Creeper", "Skeleton", "Spider", "PigZombie", "Enderman"]
-                ];
-                EntityManager::createEntity($ent[mt_rand(0, 1)][mt_rand(0, 5)], Position::fromObject($pos, $level));
-            }
-        }
     }
 
 }
