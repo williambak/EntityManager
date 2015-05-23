@@ -41,12 +41,8 @@ abstract class BaseEntity extends Creature{
     public abstract function getTarget();
 
     public function getSaveId(){
-        try{
-            $class = new \ReflectionClass(static::class);
-            return $class->getShortName();
-        }catch(\Exception $e){
-            return null;
-        }
+        $class = new \ReflectionClass(static::class);
+        return $class->getShortName();
     }
 
     public function onUpdate($currentTick){
@@ -66,10 +62,10 @@ abstract class BaseEntity extends Creature{
     }
 
     public function initEntity(){
-        Entity::initEntity();
         if(isset($this->namedtag->Movement)){
             $this->setMovement($this->namedtag["Movement"]);
         }
+        Entity::initEntity();
     }
 
     public function saveNBT(){
@@ -80,6 +76,7 @@ abstract class BaseEntity extends Creature{
     public function spawnTo(Player $player){
         if(isset($this->hasSpawned[$player->getId()]) or !isset($player->usedChunks[Level::chunkHash($this->chunk->getX(), $this->chunk->getZ())])) return;
 
+        $this->setDataProperty(self::DATA_NO_AI, self::DATA_TYPE_BYTE, 1);
         $pk = new AddEntityPacket();
         $pk->eid = $this->getID();
         $pk->type = static::NETWORK_ID;
@@ -227,8 +224,8 @@ abstract class BaseEntity extends Creature{
         $z = $target->z - $this->z;
         $atn = atan2($z, $x);
         $motionY = [
-            4 => 0.92,
-            3 => 0.25,
+            4 => 1.1,
+            3 => 0.3,
             2 => 0,
             1 => 0,
             0 => 0,
@@ -241,7 +238,6 @@ abstract class BaseEntity extends Creature{
 
         $this->entityBaseTick();
         $this->updateMovement();
-        $this->lastTick = microtime(true);
         return true;
     }
 
