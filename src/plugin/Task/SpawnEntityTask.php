@@ -9,10 +9,6 @@ use pocketmine\scheduler\PluginTask;
 
 class SpawnEntityTask extends PluginTask{
 
-    public function __construct(EntityManager $owner){
-        $this->owner = $owner;
-    }
-
     public function onRun($currentTicks){
         foreach(EntityManager::$spawnerData as $pos => $data){
             if(mt_rand(1, 3) > 1) continue;

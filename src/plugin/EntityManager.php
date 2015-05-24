@@ -315,7 +315,7 @@ class EntityManager extends PluginBase implements Listener{
                         $arrow[$id] = $ent;
                     }
                 }
-                $output = "--- Level \"{$level->getName()}\" 에 있는 엔티티 수: ---\n";
+                $output = "--- Level \"{$level->getName()}\" 에 있는 엔티티 ---\n";
                 $output .= TextFormat::YELLOW . "Monster: " . count($mob) . "\n";
                 $output .= TextFormat::YELLOW . "Animal: " . count($animal) . "\n";
                 $output .= TextFormat::YELLOW . "Items: " . count($item) . "\n";

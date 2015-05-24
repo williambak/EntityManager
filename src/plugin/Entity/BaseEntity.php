@@ -155,9 +155,9 @@ abstract class BaseEntity extends Creature{
             }
         }
 
-        foreach($this->level->getCollidingEntities($bb->grow(0.25, 0.25, 0.25), $this) as $ent){
+        /*foreach($this->level->getCollidingEntities($bb->grow(0.25, 0.25, 0.25), $this) as $ent){
             $collides[] = $ent;
-        }
+        }*/
 
         return $collides;
     }
@@ -173,18 +173,19 @@ abstract class BaseEntity extends Creature{
         $list = $this->getCollisionCubes($this->boundingBox->getOffsetBoundingBox($dx, $dy, $dz));
         foreach($list as $target){
             $bb = $target->getBoundingBox();
-            //점프할때 블럭체킹에 문제가있어 보류중....
-            /*if(
+            if(
                 $target instanceof Block
-                && $dy === 0 //y 좌표가 다른방식에 의해 수정되는중이 아님
-                && $this->boundingBox->minY >= $bb->minY //최하의 y좌표 체킹
-                && $target->distanceSquared($this) <= 1 //그 블럭과의 거리
-                && $bb->maxY - $bb->minY <= 1 //블럭의 높이
+                && $dy === 0
+                && $bb->maxY - $bb->minY <= 1
+                && $this->boundingBox->minY >= $bb->minY
+                && $this->boundingBox->minY < $bb->maxY
+                && $target->getSide(Vector3::SIDE_UP)->getBoundingBox() === null
+                && $target->distanceSquared($target->add(0.5, 0.5, 0.5)) <= 1
             ){
                 $isJump = true;
-                $dy = 0.65;
+                $dy = 0.55;
                 $this->motionY = 0;
-            }*/
+            }
             if($this->boundingBox->maxY > $bb->minY and $this->boundingBox->minY < $bb->maxY){
                 if($this->boundingBox->maxZ > $bb->minZ && $this->boundingBox->minZ < $bb->maxZ){
                     if($this->boundingBox->maxX + $dx >= $bb->minX and $this->boundingBox->maxX <= $bb->minX){

@@ -32,6 +32,10 @@ class Spider extends Monster{
     }
 
     public function updateTick(){
+        if($this->server->getDifficulty() < 1){
+            $this->close();
+            return;
+        }
         if(!$this->isAlive()){
             if(++$this->deadTicks >= 23) $this->close();
             return;

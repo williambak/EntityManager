@@ -19,10 +19,15 @@ abstract class Monster extends BaseEntity{
     private $damage = [];
 
     /**
+     * @param int $difficulty
+     *
      * @return int[]
      */
-    public function getDamage(){
-        return $this->damage;
+    public function getDamage($difficulty = null){
+        if($difficulty === null or !is_numeric($difficulty)){
+            $difficulty = Server::getInstance()->getDifficulty();
+        }
+        return isset($this->damage[(int) $difficulty]) ? $this->damage[(int) $difficulty] : 0;
     }
 
     /**
@@ -31,7 +36,11 @@ abstract class Monster extends BaseEntity{
      */
     public function setDamage($damage, $difficulty = null){
         $difficulty = $difficulty === null ? Server::getInstance()->getDifficulty() : (int) $difficulty;
-        if(is_array($damage)) $this->damage = $damage;
+        if(is_array($damage)){
+            foreach($damage as $key => $int){
+                $this->damage[(int) $key] = (float) $int;
+            }
+        }
         elseif($difficulty >= 1 && $difficulty <= 3) $this->damage[$difficulty] = (float) $damage;
     }
 
