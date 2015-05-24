@@ -20,8 +20,7 @@ use pocketmine\Player;
 class Skeleton extends Monster implements ProjectileSource{
     const NETWORK_ID = 34;
 
-    public $width = 0.64;
-    public $length = 0.6;
+    public $width = 0.65;
     public $height = 1.8;
 
     public function initEntity(){
@@ -93,11 +92,7 @@ class Skeleton extends Monster implements ProjectileSource{
                 }
             }
         }elseif($target instanceof Vector3){
-            if($this->distance($target) <= 1){
-                $this->moveTime = 800;
-            }elseif($this->x == $this->lastX or $this->z == $this->lastZ){
-                $this->moveTime += 20;
-            }
+            if($this->distance($target) <= 1) $this->moveTime = 800;
         }
         $this->entityBaseTick();
         $this->updateMovement();

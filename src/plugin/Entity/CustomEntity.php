@@ -67,17 +67,13 @@ class CustomEntity extends Monster{
         ++$this->moveTime;
         $target = $this->updateMove();
         if($target instanceof Player){
-            if($this->attackDelay >= 16 && $this->distanceSquared($target) <= 0.81){
+            if($this->attackDelay >= 16 && $this->distanceSquared($target) <= 1){
                 $this->attackDelay = 0;
                 $ev = new EntityDamageByEntityEvent($this, $target, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $this->getDamage()[$this->server->getDifficulty()]);
                 $target->attack($ev->getFinalDamage(), $ev);
             }
         }elseif($target instanceof Vector3){
-            if($this->distance($target) <= 1){
-                $this->moveTime = 800;
-            }elseif($this->x == $this->lastX or $this->z == $this->lastZ){
-                $this->moveTime += 20;
-            }
+            if($this->distance($target) <= 1) $this->moveTime = 800;
         }
         $this->entityBaseTick();
         $this->updateMovement();

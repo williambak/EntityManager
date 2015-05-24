@@ -45,6 +45,11 @@ class Minecart extends Real_Minecart{
         return $this->rider;
     }
 
+    /**
+     * @param AxisAlignedBB $bb
+     *
+     * @return Block[]|Entity[]
+     */
     public function getCollisionCubes(AxisAlignedBB $bb){
         $minX = Math::floorFloat($bb->minX);
         $minY = Math::floorFloat($bb->minY);
@@ -72,19 +77,33 @@ class Minecart extends Real_Minecart{
     }
 
     public function move($dx, $dz, $dy = 0){
-        if($dy <= 0 && !$this->onGround && $this->lastY !== null){
-            $this->motionY -= $this->gravity;
-            $dy = $this->motionY;
-        }
         $movX = $dx;
         $movY = $dy;
         $movZ = $dz;
         $list = $this->getCollisionCubes($this->boundingBox->getOffsetBoundingBox($dx, $dy, $dz));
         foreach($list as $target){
-            if(!$target instanceof Block && !$target instanceof Entity) continue;
             $bb = $target->getBoundingBox();
+            if($this->boundingBox->maxY > $bb->minY and $this->boundingBox->minY < $bb->maxY){
+                if($this->boundingBox->maxZ > $bb->minZ && $this->boundingBox->minZ < $bb->maxZ){
+                    if($this->boundingBox->maxX + $dx >= $bb->minX and $this->boundingBox->maxX <= $bb->minX){
+                        if(($x1 = $bb->minX - ($this->boundingBox->maxX + $dx)) < 0) $dx += $x1;
+                    }
+                    if($this->boundingBox->minX + $dx <= $bb->maxX and $this->boundingBox->minX >= $bb->maxX){
+                        if(($x1 = $bb->maxX - ($this->boundingBox->minX + $dx)) > 0) $dx += $x1;
+                    }
+                }
+                if($this->boundingBox->maxX > $bb->minX && $this->boundingBox->minX < $bb->maxX){
+                    if($this->boundingBox->maxZ + $dz >= $bb->minZ and $this->boundingBox->maxZ <= $bb->minZ){
+                        if(($z1 = $bb->minZ - ($this->boundingBox->maxZ + $dz)) < 0) $dz += $z1;
+                    }
+                    if($this->boundingBox->minZ + $dz <= $bb->maxZ and $this->boundingBox->minZ >= $bb->maxZ){
+                        if(($z1 = $bb->maxZ - ($this->boundingBox->minZ + $dz)) > 0) $dz += $z1;
+                    }
+                }
+            }
             if(
-                $this->boundingBox->maxX > $bb->minX
+                $dy != 0
+                and $this->boundingBox->maxX > $bb->minX
                 and $this->boundingBox->minX < $bb->maxX
                 and $this->boundingBox->maxZ > $bb->minZ
                 and $this->boundingBox->minZ < $bb->maxZ
@@ -96,37 +115,12 @@ class Minecart extends Real_Minecart{
                     if(($y1 = $bb->maxY - ($this->boundingBox->minY + $dy)) > 0) $dy += $y1;
                 }
             }
-
-            $minY = (int) $this->boundingBox->minY;
-            if($minY === $bb->minY && ($minY + 0.5) !== $bb->maxY){
-                if($this->boundingBox->maxZ > $bb->minZ && $this->boundingBox->minZ < $bb->maxZ){
-                    if($this->boundingBox->maxX + $dx >= $bb->minX and $this->boundingBox->maxX <= $bb->minX){
-                        if(($x1 = $this->boundingBox->maxX + $dx - $bb->minX) > 0) $dx += $x1;
-                    }
-                    if($this->boundingBox->minX + $dx <= $bb->maxX and $this->boundingBox->minX >= $bb->maxX){
-                        if(($x1 = $this->boundingBox->minX + $dx - $bb->maxX) < 0) $dx += $x1;
-                    }
-                }
-                if($this->boundingBox->maxX > $bb->minX && $this->boundingBox->minX < $bb->maxX){
-                    if($this->boundingBox->maxZ + $dz >= $bb->minZ and $this->boundingBox->maxZ <= $bb->minZ){
-                        if(($z1 = $this->boundingBox->maxZ + $dz - $bb->minZ) > 0) $dz += $z1;
-                    }
-                    if($this->boundingBox->minZ + $dz <= $bb->maxZ and $this->boundingBox->minZ >= $bb->maxZ){
-                        if(($z1 = $this->boundingBox->minZ + $dz - $bb->maxZ) < 0) $dz += $z1;
-                    }
-                }
-                if($target instanceof Block && $minY + 1 == $bb->maxY && $bb->maxY - $bb->maxY <= 1 & $dy === 0){
-                    $dy = 0.3;
-                    $this->motionY = 0;
-                }
-            }
         }
-        $this->boundingBox->offset($dx, $dy, $dz);
+        $radius = $this->width / 2;
         $this->setComponents($this->x + $dx, $this->y + $dy, $this->z + $dz);
+        $this->boundingBox->setBounds($this->x - $radius, $this->y, $this->z - $radius, $this->x + $radius, $this->y + $this->height, $this->z + $radius);
 
-        $this->updateFallState($dy, $this->onGround = ($movY != $dy and $movY < 0));
-        if($this->onGround) $this->motionY = 0;
-
+        $this->onGround = ($movY != $dy and $movY < 0);
         $this->isCollidedVertically = $movY != $dy;
         $this->isCollidedHorizontally = ($movX != $dx or $movZ != $dz);
         $this->isCollided = ($this->isCollidedHorizontally or $this->isCollidedVertically);

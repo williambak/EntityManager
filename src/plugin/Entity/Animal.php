@@ -29,12 +29,12 @@ abstract class Animal extends BaseEntity implements Ageable{
             $atn = atan2($z, $x);
             if($this->stayTime > 0){
                 $this->move(0, 0);
-                --$this->stayTime;
-                if($this->stayTime <= 0) $this->stayVec = null;
+                if(--$this->stayTime <= 0) $this->stayVec = null;
             }else{
                 $this->move(cos($atn) * 0.07, sin($atn) * 0.07);
             }
-            $this->setRotation(rad2deg($atn - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
+            $this->yaw = rad2deg($atn - M_PI_2);
+            $this->pitch = rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2)));
         }else{
             $this->move(0, 0);
         }
@@ -59,11 +59,7 @@ abstract class Animal extends BaseEntity implements Ageable{
                 $this->z = $this->lastZ;
             }
         }elseif($target instanceof Vector3){
-            if($this->distance($target) <= 1){
-                $this->moveTime = 800;
-            }elseif($this->x === $this->lastX or $this->z === $this->lastZ){
-                $this->moveTime += 20;
-            }
+            if($this->distance($target) <= 1) $this->moveTime = 800;
         }
         $this->entityBaseTick();
         $this->updateMovement();

@@ -71,14 +71,8 @@ class PigZombie extends Monster{
                 $ev = new EntityDamageByEntityEvent($this, $target, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $this->getDamage()[$this->server->getDifficulty()]);
                 $target->attack($ev->getFinalDamage(), $ev);
             }
-        }
-        elseif($target instanceof Vector3){
-            if($this->distance($target) <= 1){
-                $this->moveTime = 800;
-            }
-            elseif($this->x == $this->lastX or $this->z == $this->lastZ){
-                $this->moveTime += 20;
-            }
+        }elseif($target instanceof Vector3){
+            if($this->distance($target) <= 1) $this->moveTime = 800;
         }
         $this->entityBaseTick();
         $this->updateMovement();

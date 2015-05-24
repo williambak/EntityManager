@@ -38,16 +38,16 @@ abstract class Monster extends BaseEntity{
     public function updateMove($tick = 1){
         $target = null;
         if($this->isMovement()){
-            $target = $this->getTarget();
-            $x = $target->x - $this->x;
-            $y = $target->y - $this->y;
-            $z = $target->z - $this->z;
-            $atn = atan2($z, $x);
             if($this->stayTime > 0){
                 $this->move(0, 0);
                 $this->stayTime -= $tick;
                 if($this->stayTime <= 0) $this->stayVec = null;
             }else{
+                $target = $this->getTarget();
+                $x = $target->x - $this->x;
+                $y = $target->y - $this->y;
+                $z = $target->z - $this->z;
+                $atn = atan2($z, $x);
                 $speed = [
                     Zombie::NETWORK_ID => 0.11,
                     Creeper::NETWORK_ID => 0.09,
@@ -58,8 +58,8 @@ abstract class Monster extends BaseEntity{
                 ];
                 $add = $this instanceof PigZombie && $this->isAngry() ? 0.132 : $speed[static::NETWORK_ID];
                 $this->move(cos($atn) * $add * $tick, sin($atn) * $add * $tick);
+                $this->setRotation(rad2deg($atn - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
             }
-            $this->setRotation(rad2deg($atn - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
         }
         $this->updateMovement();
         return $target;
@@ -104,29 +104,31 @@ abstract class Monster extends BaseEntity{
     }
 
     public function getTarget(){
-        if(!$this->isMovement()) return new Vector3();
-        if($this->stayTime > 0){
-            if($this->stayVec === null or (mt_rand(1, 115) <= 3 and $this->stayTime % 20 === 0)) $this->stayVec = $this->add(mt_rand(-10, 10), mt_rand(-3, 3), mt_rand(-10, 10));
-            return $this->stayVec;
-        }
         $target = null;
         $nearDistance = PHP_INT_MAX;
         foreach($this->getViewers() as $p){
-            if($p->spawned and $p->isAlive() and !$p->closed and $p->isSurvival() and ($distance = $this->distanceSquared($p)) <= 81){
-                if($distance < $nearDistance){
-                    $target = $p;
-                    $nearDistance = $distance;
-                    continue;
-                }
+            if(!$p->spawned || !$p->isAlive() || $p->closed || !$p->isSurvival() || ($distance = $this->distanceSquared($p)) <= 81) continue;
+            if($distance < $nearDistance){
+                $target = $p;
+                $nearDistance = $distance;
             }
         }
-        if(($target === null || ($this instanceof PigZombie && !$this->isAngry())) && $this->stayTime <= 0 && mt_rand(1, 420) === 1){
+        if($this->stayTime > 0){
+            if($target != null){
+                $this->stayVec = null;
+                $this->stayTime = 0;
+            }else{
+                if($this->stayVec == null or mt_rand(1, 120) <= 3) $this->stayVec = $this->add(mt_rand(-100, 100), mt_rand(-20, 20) / 10, mt_rand(-100, 100));
+                return $this->stayVec;
+            }
+        }
+        if(($target == null || ($this instanceof PigZombie && !$this->isAngry())) && $this->stayTime <= 0 && mt_rand(1, 380) === 1){
             $this->stayTime = mt_rand(100, 450);
-            return $this->stayVec = $this->add(mt_rand(-10, 10), mt_rand(-3, 3), mt_rand(-10, 10));
+            return $this->stayVec = $this->add(mt_rand(-100, 100), mt_rand(-20, 20) / 10, mt_rand(-100, 100));
         }
         if((!$this instanceof PigZombie && $target instanceof Player) || ($this instanceof PigZombie && $this->isAngry() && $target instanceof Player)){
             return $target;
-        }elseif($this->moveTime >= mt_rand(650, 800) or !$this->target instanceof Vector3){
+        }elseif($this->moveTime >= mt_rand(800, 1200) or !$this->target instanceof Vector3){
             $this->moveTime = 0;
             $this->target = $this->add(mt_rand(-100, 100), 0, mt_rand(-100, 100));
         }

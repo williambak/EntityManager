@@ -131,7 +131,12 @@ abstract class BaseEntity extends Creature{
         Server::broadcastPacket($this->hasSpawned, $pk->setChannel(Network::CHANNEL_WORLD_EVENTS));
     }
 
-    public function getCollisionCubes(AxisAlignedBB $bb, $entities = true){
+    /**
+     * @param AxisAlignedBB $bb
+     *
+     * @return Block[]|Entity[]
+     */
+    public function getCollisionCubes(AxisAlignedBB $bb){
         $minX = Math::floorFloat($bb->minX);
         $minY = Math::floorFloat($bb->minY);
         $minZ = Math::floorFloat($bb->minZ);
@@ -145,12 +150,12 @@ abstract class BaseEntity extends Creature{
             for($v->x = $minX; $v->x <= $maxX; ++$v->x){
                 for($v->y = $minY - 1; $v->y <= $maxY; ++$v->y){
                     $block = $this->level->getBlock($v);
-                    if($block->getId() > 0 && $block->getBoundingBox() !== null) $collides[] = $block;
+                    if($block->getBoundingBox() !== null) $collides[] = $block;
                 }
             }
         }
 
-        if($entities) foreach($this->level->getCollidingEntities($bb->grow(0.25, 0.25, 0.25), $this) as $ent){
+        foreach($this->level->getCollidingEntities($bb->grow(0.25, 0.25, 0.25), $this) as $ent){
             $collides[] = $ent;
         }
 
@@ -158,17 +163,28 @@ abstract class BaseEntity extends Creature{
     }
 
     public function move($dx, $dz, $dy = 0){
-        if($dy === 0 && !$this->onGround && $this->lastY !== null){
-            $this->motionY -= $this->gravity;
+        if($dy == 0 && !$this->onGround && $this->motionY != 0){
             $dy = $this->motionY;
         }
+        $isJump = false;
         $movX = $dx;
         $movY = $dy;
         $movZ = $dz;
         $list = $this->getCollisionCubes($this->boundingBox->getOffsetBoundingBox($dx, $dy, $dz));
         foreach($list as $target){
-            if(!$target instanceof Block && !$target instanceof Entity) continue;
             $bb = $target->getBoundingBox();
+            //점프할때 블럭체킹에 문제가있어 보류중....
+            /*if(
+                $target instanceof Block
+                && $dy === 0 //y 좌표가 다른방식에 의해 수정되는중이 아님
+                && $this->boundingBox->minY >= $bb->minY //최하의 y좌표 체킹
+                && $target->distanceSquared($this) <= 1 //그 블럭과의 거리
+                && $bb->maxY - $bb->minY <= 1 //블럭의 높이
+            ){
+                $isJump = true;
+                $dy = 0.65;
+                $this->motionY = 0;
+            }*/
             if($this->boundingBox->maxY > $bb->minY and $this->boundingBox->minY < $bb->maxY){
                 if($this->boundingBox->maxZ > $bb->minZ && $this->boundingBox->minZ < $bb->maxZ){
                     if($this->boundingBox->maxX + $dx >= $bb->minX and $this->boundingBox->maxX <= $bb->minX){
@@ -188,7 +204,8 @@ abstract class BaseEntity extends Creature{
                 }
             }
             if(
-                $this->boundingBox->maxX > $bb->minX
+                $dy != 0
+                and $this->boundingBox->maxX > $bb->minX
                 and $this->boundingBox->minX < $bb->maxX
                 and $this->boundingBox->maxZ > $bb->minZ
                 and $this->boundingBox->minZ < $bb->maxZ
@@ -206,7 +223,11 @@ abstract class BaseEntity extends Creature{
         $this->boundingBox->setBounds($this->x - $radius, $this->y, $this->z - $radius, $this->x + $radius, $this->y + $this->height, $this->z + $radius);
 
         $this->updateFallState($dy, $this->onGround = ($movY != $dy and $movY < 0));
-        if($this->onGround) $this->motionY = 0;
+        if($this->onGround){
+            $this->motionY = 0;
+        }elseif(!$isJump){
+            $this->motionY -= $this->gravity;
+        }
 
         $this->isCollidedVertically = $movY != $dy;
         $this->isCollidedHorizontally = ($movX != $dx or $movZ != $dz);
@@ -217,24 +238,25 @@ abstract class BaseEntity extends Creature{
         if(!$this->attacker instanceof Entity) return false;
 
         if($this->moveTime > 5) $this->moveTime = 5;
-
-        --$this->moveTime;
         $target = $this->attacker;
+        if(--$this->moveTime <= 0) $this->attacker = null;
+        $y = [
+            0,
+            0,
+            0,
+            1.1,
+            0.3,
+        ];
+        if(!isset($y[$this->moveTime])){
+            $motionY = 0;
+            $this->attacker = null;
+        }else{
+            $motionY = $y[$this->moveTime];
+        }
         $x = $target->x - $this->x;
         $z = $target->z - $this->z;
         $atn = atan2($z, $x);
-        $motionY = [
-            4 => 1.1,
-            3 => 0.3,
-            2 => 0,
-            1 => 0,
-            0 => 0,
-        ];
-        $this->move(-cos($atn) * 0.32, -sin($atn) * 0.32, isset($motionY[$this->moveTime]) ? $motionY[$this->moveTime] : 0);
-
-        if((int) $this->moveTime <= 0){
-            $this->attacker = null;
-        }
+        $this->move(-cos($atn) * 0.41, -sin($atn) * 0.41, $motionY);
 
         $this->entityBaseTick();
         $this->updateMovement();

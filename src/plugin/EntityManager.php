@@ -40,6 +40,7 @@ use pocketmine\Player;
 use pocketmine\plugin\PluginBase;
 use pocketmine\Server;
 use pocketmine\utils\TextFormat;
+use pocketmine\entity\Item as ItemEntity;
 
 class EntityManager extends PluginBase implements Listener{
 
@@ -187,10 +188,10 @@ class EntityManager extends PluginBase implements Listener{
      * @param Position $source
      * @param mixed ...$args
      *
-     * @return BaseEntity
+     * @return BaseEntity|Entity
      */
     public static function createEntity($type, Position $source, ...$args){
-        $chunk = $source->getLevel()->getChunk($source->getX() >> 4, $source->getZ() >> 4, true);
+        $chunk = $source->getLevel()->getChunk($source->x >> 4, $source->z >> 4, true);
         if($chunk === null or !$chunk->isGenerated()) return null;
         $nbt = new Compound("", [
             "Pos" => new Enum("Pos", [
@@ -212,10 +213,13 @@ class EntityManager extends PluginBase implements Listener{
             $class = self::$knownEntities[$type];
             /** @var BaseEntity $entity */
             $entity =  new $class($chunk, $nbt, ...$args);
-            if($entity !== null && $entity->isCreated()) $entity->spawnToAll();
+            if($entity != null && $entity->isCreated()) $entity->spawnToAll();
+            return $entity;
+        }else{
+            $entity = Entity::createEntity($type, $chunk, $nbt, ...$args);
+            if($entity != null) $entity->spawnToAll();
             return $entity;
         }
-        return null;
     }
 
     public static function registerEntity($name){
@@ -261,29 +265,7 @@ class EntityManager extends PluginBase implements Listener{
         $pos = $ev->getBlock()->getSide($ev->getFace());
 
         if($item->getId() === Item::SPAWN_EGG){
-            if(($entity = self::createEntity($item->getDamage(), $pos)) == null){
-                $chunk = $pos->getLevel()->getChunk($pos->x >> 4, $pos->z >> 4, true);
-                if($chunk !== null && $chunk->isGenerated()){
-                    $nbt = new Compound("", [
-                        "Pos" => new Enum("Pos", [
-                            new Double("", $pos->x),
-                            new Double("", $pos->y),
-                            new Double("", $pos->z)
-                        ]),
-                        "Motion" => new Enum("Motion", [
-                            new Double("", 0),
-                            new Double("", 0),
-                            new Double("", 0)
-                        ]),
-                        "Rotation" => new Enum("Rotation", [
-                            new Float("", 0),
-                            new Float("", 0)
-                        ]),
-                    ]);
-                    $entity = Entity::createEntity($item->getDamage(), $chunk, $nbt);
-                }
-            }
-            if($player->isSurvival() && $entity != null){
+            if(self::createEntity($item->getDamage(), $pos) != null && $player->isSurvival()){
                 $item->count--;
                 $player->getInventory()->setItemInHand($item);
             }
@@ -317,7 +299,27 @@ class EntityManager extends PluginBase implements Listener{
                 $output .= "소환된 엔티티를 모두 제거했어요";
                 break;
             case "체크":
-                $output .= "현재 소환된 모든 엔티티 수: " . count(self::getEntities());
+                $mob = [];
+                $animal = [];
+                $item = [];
+                $arrow = [];
+                $level = $i instanceof Player ? $i->getLevel() : $this->getServer()->getDefaultLevel();
+                foreach($level->getEntities() as $id => $ent){
+                    if($ent instanceof Monster){
+                        $mob[$id] = $ent;
+                    }elseif($ent instanceof Animal){
+                        $animal[$id] = $ent;
+                    }elseif($ent instanceof ItemEntity){
+                        $item[$id] = $ent;
+                    }elseif($ent instanceof Arrow){
+                        $arrow[$id] = $ent;
+                    }
+                }
+                $output = "--- Level \"{$level->getName()}\" 에 있는 엔티티 수: ---\n";
+                $output .= TextFormat::YELLOW . "Monster: " . count($mob) . "\n";
+                $output .= TextFormat::YELLOW . "Animal: " . count($animal) . "\n";
+                $output .= TextFormat::YELLOW . "Items: " . count($item) . "\n";
+                $output .= TextFormat::YELLOW . "Arrows: " . count($arrow) . "\n";
                 break;
             case "스폰":
                 if(!is_numeric($sub[0]) and gettype($sub[0]) !== "string"){
@@ -336,9 +338,7 @@ class EntityManager extends PluginBase implements Listener{
                     $pos = $i->getPosition();
                 }
                 
-                if(isset($pos) && self::createEntity($sub[0], $pos) !== null){
-                    $output .= "몬스터가 소환되었어요";
-                }else{
+                if(!isset($pos) || self::createEntity($sub[0], $pos) == null){
                     $output .= "사용법: /스폰 <id|name> (x) (y) (z) (level)";
                 }
                 break;

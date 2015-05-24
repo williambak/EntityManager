@@ -12,8 +12,7 @@ class Spider extends Monster{
     const NETWORK_ID = 35;
 
     public $width = 1.5;
-    public $length = 0.8;
-    public $height = 1.12;
+    public $height = 1.2;
 
     public function initEntity(){
         parent::initEntity();
@@ -50,11 +49,7 @@ class Spider extends Monster{
                 $target->attack($ev->getFinalDamage(), $ev);
             }
         }elseif($target instanceof Vector3){
-            if($this->distance($target) <= 1){
-                $this->moveTime = 800;
-            }elseif($this->x === $this->lastX or $this->z === $this->lastZ){
-                $this->moveTime += 20;
-            }
+            if($this->distance($target) <= 1) $this->moveTime = 800;
         }
         $this->entityBaseTick();
         $this->updateMovement();

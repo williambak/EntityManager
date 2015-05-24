@@ -30,11 +30,6 @@ class Chicken extends Animal{
     }
 
     public function getTarget(){
-        if(!$this->isMovement()) return new Vector3();
-        if($this->stayTime > 0){
-            if($this->stayVec === null or (mt_rand(1, 115) <= 3 and $this->stayTime % 20 === 0)) $this->stayVec = $this->add(mt_rand(-10, 10), mt_rand(-3, 3), mt_rand(-10, 10));
-            return $this->stayVec;
-        }
         $target = null;
         $nearDistance = PHP_INT_MAX;
         foreach($this->hasSpawned as $p){
@@ -47,15 +42,24 @@ class Chicken extends Animal{
                 }
             }
         }
+        if($this->stayTime > 0){
+            if($target != null){
+                $this->stayVec = null;
+                $this->stayTime = 0;
+            }else{
+                if($this->stayVec === null or mt_rand(1, 120) <= 3) $this->stayVec = $this->add(mt_rand(-100, 100), mt_rand(-20, 20) / 10, mt_rand(-100, 100));
+                return $this->stayVec;
+            }
+        }
         if($target === null && $this->stayTime <= 0 && mt_rand(1, 420) === 1){
             $this->stayTime = mt_rand(82, 400);
-            return $this->stayVec = $this->add(mt_rand(-10, 10), 0, mt_rand(-10, 10));
+            return $this->stayVec = $this->add(mt_rand(-100, 100), mt_rand(-20, 20) / 10, mt_rand(-100, 100));
         }
         if($target instanceof Player){
             return $target;
         }elseif($this->moveTime >= mt_rand(400, 800) or ($target === null and !$this->target instanceof Vector3)){
             $this->moveTime = 0;
-            $this->target = new Vector3($this->x + mt_rand(-100, 100), $this->y, $this->z + mt_rand(-100, 100));
+            $this->target = $this->add(mt_rand(-100, 100), 0, mt_rand(-100, 100));
         }
         return $this->target;
     }

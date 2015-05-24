@@ -12,9 +12,7 @@ class Zombie extends Monster{
     const NETWORK_ID = 32;
 
     public $width = 0.72;
-    public $length = 0.4;
     public $height = 1.8;
-    public $eyeHeight = 1.62;
 
     public function initEntity(){
         parent::initEntity();
@@ -50,11 +48,7 @@ class Zombie extends Monster{
                 $target->attack($ev->getFinalDamage(), $ev);
             }
         }elseif($target instanceof Vector3){
-            if($this->distance($target) <= 1){
-                $this->moveTime = 800;
-            }elseif($this->x == $this->lastX or $this->z == $this->lastZ){
-                $this->moveTime += 20;
-            }
+            if($this->distance($target) <= 1) $this->moveTime = 800;
         }
         $this->entityBaseTick();
         $this->updateMovement();
