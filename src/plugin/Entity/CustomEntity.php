@@ -13,11 +13,14 @@ use pocketmine\network\protocol\AddEntityPacket;
 use pocketmine\Player;
 
 class CustomEntity extends Monster{
-    //아직 쓸게 못됨
 
     public $width = 0.72;
     public $height = 1.8;
     public $eyeHeight = 1.62;
+
+    public function __construct(){
+        //이 엔티티는 미완성입니다
+    }
 
     public function initEntity(){
         parent::initEntity();
@@ -46,9 +49,9 @@ class CustomEntity extends Monster{
         $pk->yaw = $this->yaw;
         $pk->pitch = $this->pitch;
         $pk->metadata = $this->dataProperties;
-        $player->dataPacket($pk);
+        //$player->dataPacket($pk);
 
-        $this->hasSpawned[$player->getId()] = $player;
+        //$this->hasSpawned[$player->getId()] = $player;
     }
 
     public function getName(){
@@ -56,6 +59,7 @@ class CustomEntity extends Monster{
     }
 
     public function updateTick(){
+        if($this) return;
         if(!$this->isAlive()){
             if(++$this->deadTicks >= 23) $this->close();
             return;
@@ -81,7 +85,7 @@ class CustomEntity extends Monster{
 
     public function getDrops(){
         $drops = [];
-        foreach(EntityManager::getData("custom.drops") as $drop){
+        foreach(EntityManager::getData("custom.drops", []) as $drop){
             $drops[] = Item::get($drop[0], $drop[1], $drop[2]);
         }
         return $drops;

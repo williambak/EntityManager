@@ -82,12 +82,12 @@ class EntityManager extends PluginBase implements Listener{
         }
 
         self::$entityData = [
-            "custom" =>[
+            /*"custom" =>[
                 "name" => isset($data["custom"]["name"]) ? $data["custom"]["name"] : "CustomEntity",
                 "type" => isset($data["custom"]["type"]) ? $data["custom"]["type"] : 32, //엔티티 타입
                 "damage" => isset($data["custom"]["damage"]) ? $data["custom"]["damage"] : [0, 3, 4, 6], //난이도별 데미지
                 "drops" => isset($data["custom"]["drops"]) ? $data["custom"]["drops"] : [], //죽을시 드롭할 아이템
-            ],
+            ],*/
             "entity" => [
                 "explode" => isset($data["entity"]["explode"]) ? $data["entity"]["explode"] : true,
             ],
@@ -167,17 +167,18 @@ class EntityManager extends PluginBase implements Listener{
 
     /**
      * @param string $key
+     * @param mixed $default
      *
      * @return mixed
      */
-    public static function getData($key){
+    public static function getData($key, $default = false){
         $vars = explode(".", $key);
         $base = array_shift($vars);
-        if(!isset(self::$entityData[$base])) return false;
+        if(!isset(self::$entityData[$base])) return $default;
         $base = self::$entityData[$base];
         while(count($vars) > 0){
             $baseKey = array_shift($vars);
-            if(!is_array($base) or !isset($base[$baseKey])) return false;
+            if(!is_array($base) or !isset($base[$baseKey])) return $default;
             $base = $base[$baseKey];
         }
         return $base;
