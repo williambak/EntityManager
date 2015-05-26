@@ -2,15 +2,15 @@
 
 namespace plugin\Task;
 
+use plugin\Entity\BaseEntity;
 use plugin\EntityManager;
 use pocketmine\scheduler\PluginTask;
 
 class UpdateEntityTask extends PluginTask{
 
     public function onRun($currentTicks){
-        foreach(EntityManager::getEntities() as $entity){
-            if($entity->isCreated()) $entity->updateTick();
-        }
+        $entities = EntityManager::getEntities();
+        while(($entity = array_shift($entities)) instanceof BaseEntity) $entity->updateTick();
     }
 
 }

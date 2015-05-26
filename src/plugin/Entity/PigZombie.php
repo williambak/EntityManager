@@ -20,8 +20,6 @@ class PigZombie extends Monster{
     private $angry = 0;
 
     public function initEntity(){
-        parent::initEntity();
-
         $this->fireProof = true;
         $this->setMaxHealth(22);
         if(isset($this->namedtag->Health)){
@@ -33,6 +31,7 @@ class PigZombie extends Monster{
             $this->angry = (int) $this->namedtag["Angry"];
         }
         $this->setDamage([0, 5, 9, 13]);
+        parent::initEntity();
         $this->created = true;
     }
 
@@ -72,7 +71,7 @@ class PigZombie extends Monster{
         if($target instanceof Player){
             if($this->attackDelay >= 16 && $this->distance($target) <= 1.18){
                 $this->attackDelay = 0;
-                $ev = new EntityDamageByEntityEvent($this, $target, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $this->getDamage()[$this->server->getDifficulty()]);
+                $ev = new EntityDamageByEntityEvent($this, $target, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $this->getDamage());
                 $target->attack($ev->getFinalDamage(), $ev);
             }
         }elseif($target instanceof Vector3){

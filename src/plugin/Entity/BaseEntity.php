@@ -36,9 +36,49 @@ abstract class BaseEntity extends Creature{
     public abstract function updateTick();
 
     /**
+     * @param Player $player
+     *
+     * @return bool
+     */
+    public function targetOption(Player $player){
+        $sur = true;
+        if(!$player->isSurvival() && $this instanceof Monster) $sur = false;
+        return $player->spawned && $player->isAlive() && $player->closed && $sur;
+    }
+
+    /**
      * @return Player|Vector3
      */
-    public abstract function getTarget();
+    public final function getTarget(){
+        $target = null;
+        $nearDistance = PHP_INT_MAX;
+        foreach($this->getViewers() as $player){
+            if($this->targetOption($player) && ($distance = $this->distanceSquared($player)) <= 81 && $distance < $nearDistance){
+                $target = $player;
+                $nearDistance = $distance;
+            }
+        }
+        if($this->stayTime > 0){
+            if($target != null){
+                $this->stayVec = null;
+                $this->stayTime = 0;
+            }else{
+                if($this->stayVec == null or mt_rand(1, 120) <= 3) $this->stayVec = $this->add(mt_rand(-100, 100), mt_rand(-20, 20) / 10, mt_rand(-100, 100));
+                return $this->stayVec;
+            }
+        }
+        if(($target == null || ($this instanceof PigZombie && !$this->isAngry())) && $this->stayTime <= 0 && mt_rand(1, 380) === 1){
+            $this->stayTime = mt_rand(100, 450);
+            return $this->stayVec = $this->add(mt_rand(-100, 100), mt_rand(-20, 20) / 10, mt_rand(-100, 100));
+        }
+        if((!$this instanceof PigZombie && $target instanceof Player) || ($this instanceof PigZombie && $this->isAngry() && $target instanceof Player)){
+            return $target;
+        }elseif($this->moveTime >= mt_rand(800, 1200) or !$this->target instanceof Vector3){
+            $this->moveTime = 0;
+            $this->target = $this->add(mt_rand(-100, 100), 0, mt_rand(-100, 100));
+        }
+        return $this->target;
+    }
 
     public function getSaveId(){
         $class = new \ReflectionClass(static::class);
@@ -65,6 +105,7 @@ abstract class BaseEntity extends Creature{
         if(isset($this->namedtag->Movement)){
             $this->setMovement($this->namedtag["Movement"]);
         }
+        $this->setDataProperty(self::DATA_NO_AI, self::DATA_TYPE_BYTE, 1);
         Entity::initEntity();
     }
 
@@ -76,7 +117,6 @@ abstract class BaseEntity extends Creature{
     public function spawnTo(Player $player){
         if(isset($this->hasSpawned[$player->getId()]) or !isset($player->usedChunks[Level::chunkHash($this->chunk->getX(), $this->chunk->getZ())])) return;
 
-        $this->setDataProperty(self::DATA_NO_AI, self::DATA_TYPE_BYTE, 1);
         $pk = new AddEntityPacket();
         $pk->eid = $this->getID();
         $pk->type = static::NETWORK_ID;
@@ -176,14 +216,13 @@ abstract class BaseEntity extends Creature{
             if(
                 $target instanceof Block
                 && $dy === 0
-                && $bb->maxY - $bb->minY <= 1
                 && $this->boundingBox->minY >= $bb->minY
                 && $this->boundingBox->minY < $bb->maxY
-                && $target->getSide(Vector3::SIDE_UP)->getBoundingBox() === null
+                && (($up = $target->getSide(Vector3::SIDE_UP)->getBoundingBox()) == null || $bb->minY + $up->maxY - $this->boundingBox->minY <= 1)
                 && $target->distanceSquared($target->add(0.5, 0.5, 0.5)) <= 1
             ){
                 $isJump = true;
-                $dy = 0.55;
+                $dy = 0.1;
                 $this->motionY = 0;
             }
             if($this->boundingBox->maxY > $bb->minY and $this->boundingBox->minY < $bb->maxY){
@@ -226,7 +265,7 @@ abstract class BaseEntity extends Creature{
         $this->updateFallState($dy, $this->onGround = ($movY != $dy and $movY < 0));
         if($this->onGround){
             $this->motionY = 0;
-        }elseif(!$isJump){
+        }elseif(!$isJump && $movY === 0){
             $this->motionY -= $this->gravity;
         }
 

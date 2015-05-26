@@ -9,7 +9,6 @@ use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\Timings;
 use pocketmine\math\Math;
 use pocketmine\math\Vector3;
-use pocketmine\Player;
 use pocketmine\Server;
 
 abstract class Monster extends BaseEntity{
@@ -21,7 +20,7 @@ abstract class Monster extends BaseEntity{
     /**
      * @param int $difficulty
      *
-     * @return int[]
+     * @return int
      */
     public function getDamage($difficulty = null){
         if($difficulty === null or !is_numeric($difficulty)){
@@ -110,38 +109,6 @@ abstract class Monster extends BaseEntity{
         if($this->attackTime > 0) $this->attackTime -= $tickDiff;
         Timings::$timerEntityBaseTick->stopTiming();
         return $hasUpdate;
-    }
-
-    public function getTarget(){
-        $target = null;
-        $nearDistance = PHP_INT_MAX;
-        foreach($this->getViewers() as $p){
-            if(!$p->spawned || !$p->isAlive() || $p->closed || !$p->isSurvival() || ($distance = $this->distanceSquared($p)) <= 81) continue;
-            if($distance < $nearDistance){
-                $target = $p;
-                $nearDistance = $distance;
-            }
-        }
-        if($this->stayTime > 0){
-            if($target != null){
-                $this->stayVec = null;
-                $this->stayTime = 0;
-            }else{
-                if($this->stayVec == null or mt_rand(1, 120) <= 3) $this->stayVec = $this->add(mt_rand(-100, 100), mt_rand(-20, 20) / 10, mt_rand(-100, 100));
-                return $this->stayVec;
-            }
-        }
-        if(($target == null || ($this instanceof PigZombie && !$this->isAngry())) && $this->stayTime <= 0 && mt_rand(1, 380) === 1){
-            $this->stayTime = mt_rand(100, 450);
-            return $this->stayVec = $this->add(mt_rand(-100, 100), mt_rand(-20, 20) / 10, mt_rand(-100, 100));
-        }
-        if((!$this instanceof PigZombie && $target instanceof Player) || ($this instanceof PigZombie && $this->isAngry() && $target instanceof Player)){
-            return $target;
-        }elseif($this->moveTime >= mt_rand(800, 1200) or !$this->target instanceof Vector3){
-            $this->moveTime = 0;
-            $this->target = $this->add(mt_rand(-100, 100), 0, mt_rand(-100, 100));
-        }
-        return $this->target;
     }
 
 }

@@ -16,14 +16,13 @@ class Enderman extends Monster{
     public $eyeHeight = 2.62;
 
     public function initEntity(){
-        parent::initEntity();
-
         if(isset($this->namedtag->Health)){
             $this->setHealth((int) $this->namedtag["Health"]);
         }else{
             $this->setHealth($this->getMaxHealth());
         }
         $this->setDamage([0, 1, 2, 3]);
+        parent::initEntity();
         $this->created = true;
     }
 
@@ -49,7 +48,7 @@ class Enderman extends Monster{
         if($target instanceof Player){
             if($this->attackDelay >= 16 && $this->distance($target) <= 1){
                 $this->attackDelay = 0;
-                $ev = new EntityDamageByEntityEvent($this, $target, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $this->getDamage()[$this->server->getDifficulty()]);
+                $ev = new EntityDamageByEntityEvent($this, $target, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $this->getDamage());
                 $target->attack($ev->getFinalDamage(), $ev);
             }
         }elseif($target instanceof Vector3){

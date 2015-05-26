@@ -15,8 +15,6 @@ class Spider extends Monster{
     public $height = 1.2;
 
     public function initEntity(){
-        parent::initEntity();
-
         $this->setMaxHealth(16);
         if(isset($this->namedtag->Health)){
             $this->setHealth((int) $this->namedtag["Health"]);
@@ -24,6 +22,7 @@ class Spider extends Monster{
             $this->setHealth($this->getMaxHealth());
         }
         $this->setDamage([0, 2, 2, 3]);
+        parent::initEntity();
         $this->created = true;
     }
 
@@ -49,7 +48,7 @@ class Spider extends Monster{
         if($target instanceof Player){
             if($this->attackDelay >= 16 && $this->distance($target) <= 1.1){
                 $this->attackDelay = 0;
-                $ev = new EntityDamageByEntityEvent($this, $target, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $this->getDamage()[$this->server->getDifficulty()]);
+                $ev = new EntityDamageByEntityEvent($this, $target, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $this->getDamage());
                 $target->attack($ev->getFinalDamage(), $ev);
             }
         }elseif($target instanceof Vector3){

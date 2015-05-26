@@ -21,8 +21,6 @@ class Creeper extends Monster implements Explosive{
     private $bombTime = 0;
 
     public function initEntity(){
-        parent::initEntity();
-
         if(isset($this->namedtag->BombTime)){
             $this->bombTime = (int) $this->namedtag["BombTime"];
         }
@@ -31,6 +29,7 @@ class Creeper extends Monster implements Explosive{
         }else{
             $this->setHealth($this->getMaxHealth());
         }
+        parent::initEntity();
         $this->created = true;
     }
 

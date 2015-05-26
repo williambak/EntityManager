@@ -15,14 +15,13 @@ class Zombie extends Monster{
     public $height = 1.8;
 
     public function initEntity(){
-        parent::initEntity();
-
         if(isset($this->namedtag->Health)){
             $this->setHealth((int) $this->namedtag["Health"]);
         }else{
             $this->setHealth($this->getMaxHealth());
         }
         $this->setDamage([0, 3, 4, 6]);
+        parent::initEntity();
         $this->created = true;
     }
 
@@ -48,7 +47,7 @@ class Zombie extends Monster{
         if($target instanceof Player){
             if($this->attackDelay >= 16 && $this->distanceSquared($target) <= 0.81){
                 $this->attackDelay = 0;
-                $ev = new EntityDamageByEntityEvent($this, $target, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $this->getDamage()[$this->server->getDifficulty()]);
+                $ev = new EntityDamageByEntityEvent($this, $target, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $this->getDamage());
                 $target->attack($ev->getFinalDamage(), $ev);
             }
         }elseif($target instanceof Vector3){

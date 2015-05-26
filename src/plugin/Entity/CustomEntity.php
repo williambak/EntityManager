@@ -18,19 +18,14 @@ class CustomEntity extends Monster{
     public $height = 1.8;
     public $eyeHeight = 1.62;
 
-    public function __construct(){
-        //이 엔티티는 미완성입니다
-    }
-
     public function initEntity(){
-        parent::initEntity();
-
         $this->setMaxHealth(EntityManager::getData("custom.maxhp", 20));
         $this->setDamage(EntityManager::getData("custom.damage", [0, 3, 4, 6]));
         if(!isset($this->namedtag->Health)){
             $this->namedtag->Health = new Short("Health", $this->getMaxHealth());
         }
         $this->setHealth((int) $this->namedtag["Health"]);
+        parent::initEntity();
         $this->created = true;
     }
 
@@ -49,9 +44,9 @@ class CustomEntity extends Monster{
         $pk->yaw = $this->yaw;
         $pk->pitch = $this->pitch;
         $pk->metadata = $this->dataProperties;
-        //$player->dataPacket($pk);
+        $player->dataPacket($pk);
 
-        //$this->hasSpawned[$player->getId()] = $player;
+        $this->hasSpawned[$player->getId()] = $player;
     }
 
     public function getName(){
