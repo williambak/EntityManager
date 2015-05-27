@@ -62,20 +62,20 @@ class PigZombie extends Monster{
             return;
         }
 
-        ++$this->attackDelay;
-        if($this->knockBackCheck()) return;
-
-        ++$this->moveTime;
-        if($this->angry > 0) --$this->angry;
-        $target = $this->updateMove();
-        if($target instanceof Player){
-            if($this->attackDelay >= 16 && $this->distance($target) <= 1.18){
-                $this->attackDelay = 0;
-                $ev = new EntityDamageByEntityEvent($this, $target, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $this->getDamage());
-                $target->attack($ev->getFinalDamage(), $ev);
+        if(!$this->knockBackCheck()){
+            ++$this->moveTime;
+            ++$this->attackDelay;
+            if($this->angry > 0) --$this->angry;
+            $target = $this->updateMove();
+            if($target instanceof Player){
+                if($this->attackDelay >= 16 && $this->distance($target) <= 1.18){
+                    $this->attackDelay = 0;
+                    $ev = new EntityDamageByEntityEvent($this, $target, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $this->getDamage());
+                    $target->attack($ev->getFinalDamage(), $ev);
+                }
+            }elseif($target instanceof Vector3){
+                if($this->distance($target) <= 1) $this->moveTime = 800;
             }
-        }elseif($target instanceof Vector3){
-            if($this->distance($target) <= 1) $this->moveTime = 800;
         }
         $this->entityBaseTick();
         $this->updateMovement();

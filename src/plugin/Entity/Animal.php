@@ -47,19 +47,19 @@ abstract class Animal extends BaseEntity implements Ageable{
             return;
         }
 
-        if($this->knockBackCheck()) return;
-
-        ++$this->moveTime;
-        $target = $this->updateMove();
-        if($target instanceof Player){
-            if($this->distance($target) <= 2){
-                $this->pitch = 22;
-                $this->x = $this->lastX;
-                $this->y = $this->lastY;
-                $this->z = $this->lastZ;
+        if(!$this->knockBackCheck()){
+            ++$this->moveTime;
+            $target = $this->updateMove();
+            if($target instanceof Player){
+                if($this->distance($target) <= 2){
+                    $this->pitch = 22;
+                    $this->x = $this->lastX;
+                    $this->y = $this->lastY;
+                    $this->z = $this->lastZ;
+                }
+            }elseif($target instanceof Vector3){
+                if($this->distance($target) <= 1) $this->moveTime = 800;
             }
-        }elseif($target instanceof Vector3){
-            if($this->distance($target) <= 1) $this->moveTime = 800;
         }
         $this->entityBaseTick();
         $this->updateMovement();

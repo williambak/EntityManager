@@ -65,23 +65,23 @@ class Creeper extends Monster implements Explosive{
             return;
         }
 
-        ++$this->attackDelay;
-        if($this->knockBackCheck()) return;
-
-        ++$this->moveTime;
-        $target = $this->updateMove();
-        if($target instanceof Player){
-            if($this->distance($target) > 6.2){
-                if($this->bombTime > 0) $this->bombTime -= min(2, $this->bombTime);
-            }else{
-                $this->bombTime++;
-                if($this->bombTime >= 58){
-                    $this->explode();
-                    return;
+        if(!$this->knockBackCheck()){
+            ++$this->moveTime;
+            ++$this->attackDelay;
+            $target = $this->updateMove();
+            if($target instanceof Player){
+                if($this->distance($target) > 6.2){
+                    if($this->bombTime > 0) $this->bombTime -= min(2, $this->bombTime);
+                }else{
+                    $this->bombTime++;
+                    if($this->bombTime >= 58){
+                        $this->explode();
+                        return;
+                    }
                 }
+            }elseif($target instanceof Vector3){
+                if($this->distance($target) <= 1) $this->moveTime = 800;
             }
-        }elseif($target instanceof Vector3){
-            if($this->distance($target) <= 1) $this->moveTime = 800;
         }
         $this->entityBaseTick();
         $this->updateMovement();

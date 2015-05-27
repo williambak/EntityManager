@@ -9,6 +9,7 @@ use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\Timings;
 use pocketmine\math\Math;
 use pocketmine\math\Vector3;
+use pocketmine\Player;
 use pocketmine\Server;
 
 abstract class Monster extends BaseEntity{
@@ -109,6 +110,10 @@ abstract class Monster extends BaseEntity{
         if($this->attackTime > 0) $this->attackTime -= $tickDiff;
         Timings::$timerEntityBaseTick->stopTiming();
         return $hasUpdate;
+    }
+
+    public function targetOption(Player $player){
+        return parent::targetOption($player) && $player->isSurvival();
     }
 
 }

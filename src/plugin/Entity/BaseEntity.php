@@ -33,17 +33,14 @@ abstract class BaseEntity extends Creature{
 
     private $movement = true;
 
+    public function onUpdate($currentTick){
+        return false;
+    }
+
     public abstract function updateTick();
 
-    /**
-     * @param Player $player
-     *
-     * @return bool
-     */
     public function targetOption(Player $player){
-        $sur = true;
-        if(!$player->isSurvival() && $this instanceof Monster) $sur = false;
-        return $player->spawned && $player->isAlive() && $player->closed && $sur;
+        return $player->spawned && $player->isAlive() && $player->closed;
     }
 
     /**
@@ -83,10 +80,6 @@ abstract class BaseEntity extends Creature{
     public function getSaveId(){
         $class = new \ReflectionClass(static::class);
         return $class->getShortName();
-    }
-
-    public function onUpdate($currentTick){
-        return false;
     }
 
     public function isCreated(){
@@ -218,11 +211,11 @@ abstract class BaseEntity extends Creature{
                 && $dy === 0
                 && $this->boundingBox->minY >= $bb->minY
                 && $this->boundingBox->minY < $bb->maxY
-                && (($up = $target->getSide(Vector3::SIDE_UP)->getBoundingBox()) == null || $bb->minY + $up->maxY - $this->boundingBox->minY <= 1)
+                && (($up = $target->getSide(Vector3::SIDE_UP)->getBoundingBox()) == null || $up->maxY - $this->boundingBox->minY <= 1)
                 && $target->distanceSquared($target->add(0.5, 0.5, 0.5)) <= 1
             ){
                 $isJump = true;
-                $dy = 0.1;
+                $dy = $movY = 0.1;
                 $this->motionY = 0;
             }
             if($this->boundingBox->maxY > $bb->minY and $this->boundingBox->minY < $bb->maxY){
@@ -265,7 +258,7 @@ abstract class BaseEntity extends Creature{
         $this->updateFallState($dy, $this->onGround = ($movY != $dy and $movY < 0));
         if($this->onGround){
             $this->motionY = 0;
-        }elseif(!$isJump && $movY === 0){
+        }elseif(!$isJump){
             $this->motionY -= $this->gravity;
         }
 
@@ -279,27 +272,16 @@ abstract class BaseEntity extends Creature{
 
         if($this->moveTime > 5) $this->moveTime = 5;
         $target = $this->attacker;
-        if(--$this->moveTime <= 0) $this->attacker = null;
         $y = [
-            0,
-            0,
-            0,
-            1.1,
-            0.3,
+            4 => 0.3,
+            5 => 0.9,
         ];
-        if(!isset($y[$this->moveTime])){
-            $motionY = 0;
-            $this->attacker = null;
-        }else{
-            $motionY = $y[$this->moveTime];
-        }
+        $motionY = isset($y[$this->moveTime]) ?  $y[$this->moveTime] : 0;
         $x = $target->x - $this->x;
         $z = $target->z - $this->z;
         $atn = atan2($z, $x);
         $this->move(-cos($atn) * 0.41, -sin($atn) * 0.41, $motionY);
-
-        $this->entityBaseTick();
-        $this->updateMovement();
+        if(--$this->moveTime <= 0) $this->attacker = null;
         return true;
     }
 
