@@ -7,6 +7,7 @@ use pocketmine\entity\Creature;
 use pocketmine\entity\Entity;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
+use pocketmine\event\Timings;
 use pocketmine\level\Level;
 use pocketmine\math\AxisAlignedBB;
 use pocketmine\math\Math;
@@ -24,14 +25,20 @@ abstract class BaseEntity extends Creature{
     public $stayVec = null;
     public $stayTime = 0;
 
+    private $target = null;
+    private $movement = true;
+
     protected $moveTime = 0;
     protected $created = false;
-    /** @var Vector3 */
-    protected $target = null;
-    /** @var Entity|null */
+
+    protected $subTarget = null;
+    protected $baseTarget = null;
+
     protected $attacker = null;
 
-    private $movement = true;
+    public function __destruct(){
+
+    }
 
     public function onUpdate($currentTick){
         return false;
@@ -39,18 +46,25 @@ abstract class BaseEntity extends Creature{
 
     public abstract function updateTick();
 
-    public function targetOption(Player $player){
-        return $player->spawned && $player->isAlive() && $player->closed;
+    public function targetOption(Player $player, $distance){
+        return $player->spawned && $player->isAlive() && $player->closed && $distance <= 81;
     }
 
     /**
      * @return Player|Vector3
      */
     public final function getTarget(){
+        if($this->target != null){
+            if($this->moveTime > 0){
+                return $this->target;
+            }else{
+                $this->target = null;
+            }
+        }
         $target = null;
         $nearDistance = PHP_INT_MAX;
         foreach($this->getViewers() as $player){
-            if($this->targetOption($player) && ($distance = $this->distanceSquared($player)) <= 81 && $distance < $nearDistance){
+            if($this->targetOption($player, $distance = $this->distanceSquared($player)) && $distance < $nearDistance){
                 $target = $player;
                 $nearDistance = $distance;
             }
@@ -70,11 +84,16 @@ abstract class BaseEntity extends Creature{
         }
         if((!$this instanceof PigZombie && $target instanceof Player) || ($this instanceof PigZombie && $this->isAngry() && $target instanceof Player)){
             return $target;
-        }elseif($this->moveTime >= mt_rand(800, 1200) or !$this->target instanceof Vector3){
-            $this->moveTime = 0;
-            $this->target = $this->add(mt_rand(-100, 100), 0, mt_rand(-100, 100));
+        }elseif($this->moveTime <= 0 or !$this->baseTarget instanceof Vector3){
+            $this->moveTime = mt_rand(100, 1000);
+            $this->baseTarget = $this->add(mt_rand(-100, 100), 0, mt_rand(-100, 100));
         }
-        return $this->target;
+        return $this->baseTarget;
+    }
+
+    public function setTarget(Vector3 $target, $time = 1000){
+        $this->target = $target;
+        $this->moveTime = $time;
     }
 
     public function getSaveId(){
@@ -187,15 +206,12 @@ abstract class BaseEntity extends Creature{
                 }
             }
         }
-
-        /*foreach($this->level->getCollidingEntities($bb->grow(0.25, 0.25, 0.25), $this) as $ent){
-            $collides[] = $ent;
-        }*/
-
         return $collides;
     }
 
     public function move($dx, $dz, $dy = 0){
+        Timings::$entityMoveTimer->startTiming();
+
         if($dy == 0 && !$this->onGround && $this->motionY != 0){
             $dy = $this->motionY;
         }
@@ -218,7 +234,21 @@ abstract class BaseEntity extends Creature{
                 $dy = $movY = 0.1;
                 $this->motionY = 0;
             }
-            if($this->boundingBox->maxY > $bb->minY and $this->boundingBox->minY < $bb->maxY){
+            if(
+                $dy != 0
+                and $this->boundingBox->maxX > $bb->minX
+                and $this->boundingBox->minX < $bb->maxX
+                and $this->boundingBox->maxZ > $bb->minZ
+                and $this->boundingBox->minZ < $bb->maxZ
+            ){
+                if($this->boundingBox->maxY + $dy >= $bb->minY and $this->boundingBox->maxY <= $bb->minY){
+                    if(($y1 = $bb->minY - ($this->boundingBox->maxY + $dy)) < 0) $dy += $y1;
+                }
+                if($this->boundingBox->minY + $dy <= $bb->maxY and $this->boundingBox->minY >= $bb->maxY){
+                    if(($y1 = $bb->maxY - ($this->boundingBox->minY + $dy)) > 0) $dy += $y1;
+                }
+            }
+            if($this->boundingBox->maxY + $dy > $bb->minY and $this->boundingBox->minY + $dy < $bb->maxY){
                 if($this->boundingBox->maxZ > $bb->minZ && $this->boundingBox->minZ < $bb->maxZ){
                     if($this->boundingBox->maxX + $dx >= $bb->minX and $this->boundingBox->maxX <= $bb->minX){
                         if(($x1 = $bb->minX - ($this->boundingBox->maxX + $dx)) < 0) $dx += $x1;
@@ -236,20 +266,6 @@ abstract class BaseEntity extends Creature{
                     }
                 }
             }
-            if(
-                $dy != 0
-                and $this->boundingBox->maxX > $bb->minX
-                and $this->boundingBox->minX < $bb->maxX
-                and $this->boundingBox->maxZ > $bb->minZ
-                and $this->boundingBox->minZ < $bb->maxZ
-            ){
-                if($this->boundingBox->maxY + $dy >= $bb->minY and $this->boundingBox->maxY <= $bb->minY){
-                    if(($y1 = $bb->minY - ($this->boundingBox->maxY + $dy)) < 0) $dy += $y1;
-                }
-                if($this->boundingBox->minY + $dy <= $bb->maxY and $this->boundingBox->minY >= $bb->maxY){
-                    if(($y1 = $bb->maxY - ($this->boundingBox->minY + $dy)) > 0) $dy += $y1;
-                }
-            }
         }
         $radius = $this->width / 2;
         $this->setComponents($this->x + $dx, $this->y + $dy, $this->z + $dz);
@@ -265,22 +281,22 @@ abstract class BaseEntity extends Creature{
         $this->isCollidedVertically = $movY != $dy;
         $this->isCollidedHorizontally = ($movX != $dx or $movZ != $dz);
         $this->isCollided = ($this->isCollidedHorizontally or $this->isCollidedVertically);
+
+        Timings::$entityMoveTimer->stopTiming();
     }
 
     public function knockBackCheck(){
         if(!$this->attacker instanceof Entity) return false;
-
         if($this->moveTime > 5) $this->moveTime = 5;
         $target = $this->attacker;
+        $x = $target->x - $this->x;
+        $z = $target->z - $this->z;
         $y = [
             4 => 0.3,
             5 => 0.9,
         ];
         $motionY = isset($y[$this->moveTime]) ?  $y[$this->moveTime] : 0;
-        $x = $target->x - $this->x;
-        $z = $target->z - $this->z;
-        $atn = atan2($z, $x);
-        $this->move(-cos($atn) * 0.41, -sin($atn) * 0.41, $motionY);
+        $this->move(-cos($atn = atan2($z, $x)) * 0.41, -sin($atn) * 0.41, $motionY);
         if(--$this->moveTime <= 0) $this->attacker = null;
         return true;
     }

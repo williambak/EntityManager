@@ -5,7 +5,6 @@ namespace plugin\Entity;
 use pocketmine\entity\Explosive;
 use pocketmine\event\entity\ExplosionPrimeEvent;
 use pocketmine\level\Explosion;
-use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Int;
 use pocketmine\Player;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
@@ -55,36 +54,16 @@ class Creeper extends Monster implements Explosive{
         }
     }
 
-    public function updateTick(){
-        if($this->server->getDifficulty() < 1){
-            $this->close();
-            return;
-        }
-        if(!$this->isAlive()){
-            if(++$this->deadTicks >= 23) $this->close();
-            return;
-        }
-
-        if(!$this->knockBackCheck()){
-            ++$this->moveTime;
-            ++$this->attackDelay;
-            $target = $this->updateMove();
-            if($target instanceof Player){
-                if($this->distance($target) > 6.2){
-                    if($this->bombTime > 0) $this->bombTime -= min(2, $this->bombTime);
-                }else{
-                    $this->bombTime++;
-                    if($this->bombTime >= 58){
-                        $this->explode();
-                        return;
-                    }
-                }
-            }elseif($target instanceof Vector3){
-                if($this->distance($target) <= 1) $this->moveTime = 800;
+    public function attackOption(Player $player){
+        if($this->distance($player) > 6.2){
+            if($this->bombTime > 0) $this->bombTime -= min(2, $this->bombTime);
+        }else{
+            $this->bombTime++;
+            if($this->bombTime >= 58){
+                $this->explode();
+                return;
             }
         }
-        $this->entityBaseTick();
-        $this->updateMovement();
     }
 
     public function getDrops(){

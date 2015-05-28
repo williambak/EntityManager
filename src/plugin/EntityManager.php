@@ -20,8 +20,8 @@ use plugin\Task\SpawnEntityTask;
 use plugin\Task\UpdateEntityTask;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
-use pocketmine\entity\Arrow;
 use pocketmine\entity\Entity;
+use pocketmine\entity\Projectile;
 use pocketmine\event\block\BlockBreakEvent;
 use pocketmine\event\entity\EntityDespawnEvent;
 use pocketmine\event\entity\EntitySpawnEvent;
@@ -296,15 +296,22 @@ class EntityManager extends PluginBase implements Listener{
         $output = "[EntityManager]";
         switch($cmd->getName()){
             case "제거":
-                self::clearEntity($i instanceof Player ? $i->getLevel() : null, [BaseEntity::class, Arrow::class]);
+                $level = $i instanceof Player ? $i->getLevel() : null;
+                if(isset($sub[0])){
+                    $level = $this->getServer()->getLevelByName($sub[0]);
+                }
+                self::clearEntity($level, [BaseEntity::class, Projectile::class]);
                 $output .= "소환된 엔티티를 모두 제거했어요";
                 break;
             case "체크":
                 $mob = [];
                 $animal = [];
                 $item = [];
-                $arrow = [];
+                $projectile = [];
                 $level = $i instanceof Player ? $i->getLevel() : $this->getServer()->getDefaultLevel();
+                if(isset($sub[0])){
+                    $level = $this->getServer()->getLevelByName($sub[0]);
+                }
                 foreach($level->getEntities() as $id => $ent){
                     if($ent instanceof Monster){
                         $mob[$id] = $ent;
@@ -312,15 +319,15 @@ class EntityManager extends PluginBase implements Listener{
                         $animal[$id] = $ent;
                     }elseif($ent instanceof ItemEntity){
                         $item[$id] = $ent;
-                    }elseif($ent instanceof Arrow){
-                        $arrow[$id] = $ent;
+                    }elseif($ent instanceof Projectile){
+                        $projectile[$id] = $ent;
                     }
                 }
                 $output = "--- Level \"{$level->getName()}\" 에 있는 엔티티 ---\n";
                 $output .= TextFormat::YELLOW . "Monster: " . count($mob) . "\n";
                 $output .= TextFormat::YELLOW . "Animal: " . count($animal) . "\n";
                 $output .= TextFormat::YELLOW . "Items: " . count($item) . "\n";
-                $output .= TextFormat::YELLOW . "Arrows: " . count($arrow) . "\n";
+                $output .= TextFormat::YELLOW . "Projectiles: " . count($projectile) . "\n";
                 break;
             case "스폰":
                 if(!is_numeric($sub[0]) and gettype($sub[0]) !== "string"){

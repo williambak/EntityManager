@@ -2,7 +2,6 @@
 
 namespace plugin\Entity;
 
-use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Int;
 use pocketmine\Player;
 use pocketmine\event\entity\EntityDamageEvent;
@@ -52,33 +51,11 @@ class PigZombie extends Monster{
         $this->angry = (int) $val;
     }
 
-    public function updateTick(){
-        if($this->server->getDifficulty() < 1){
-            $this->close();
-            return;
+    public function attackOption(Player $player){
+        if($this->distance($player) <= 1.18){
+            $ev = new EntityDamageByEntityEvent($this, $player, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $this->getDamage());
+            $player->attack($ev->getFinalDamage(), $ev);
         }
-        if(!$this->isAlive()){
-            if(++$this->deadTicks >= 23) $this->close();
-            return;
-        }
-
-        if(!$this->knockBackCheck()){
-            ++$this->moveTime;
-            ++$this->attackDelay;
-            if($this->angry > 0) --$this->angry;
-            $target = $this->updateMove();
-            if($target instanceof Player){
-                if($this->attackDelay >= 16 && $this->distance($target) <= 1.18){
-                    $this->attackDelay = 0;
-                    $ev = new EntityDamageByEntityEvent($this, $target, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $this->getDamage());
-                    $target->attack($ev->getFinalDamage(), $ev);
-                }
-            }elseif($target instanceof Vector3){
-                if($this->distance($target) <= 1) $this->moveTime = 800;
-            }
-        }
-        $this->entityBaseTick();
-        $this->updateMovement();
     }
 
     public function getDrops(){

@@ -29,8 +29,8 @@ class Pig extends Animal implements Rideable{
         $this->created = true;
     }
 
-    public function targetOption(Player $player){
-        return parent::targetOption($player) && $player->getInventory()->getItemInHand()->getId() == Item::CARROT;
+    public function targetOption(Player $player, $distance){
+        return parent::targetOption($player, $distance) && $player->getInventory()->getItemInHand()->getId() == Item::CARROT;
     }
 
     public function getDrops(){

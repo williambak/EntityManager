@@ -14,9 +14,9 @@ use pocketmine\Server;
 
 abstract class Monster extends BaseEntity{
 
-    protected $attackDelay = 0;
-
     private $damage = [];
+
+    public abstract function attackOption(Player $player);
 
     /**
      * @param int $difficulty
@@ -40,17 +40,17 @@ abstract class Monster extends BaseEntity{
             foreach($damage as $key => $int){
                 $this->damage[(int) $key] = (float) $int;
             }
+        }elseif($difficulty >= 1 && $difficulty <= 3){
+            $this->damage[$difficulty] = (float) $damage;
         }
-        elseif($difficulty >= 1 && $difficulty <= 3) $this->damage[$difficulty] = (float) $damage;
     }
 
-    public function updateMove($tick = 1){
+    public function updateMove(){
         $target = null;
         if($this->isMovement()){
             if($this->stayTime > 0){
                 $this->move(0, 0);
-                $this->stayTime -= $tick;
-                if($this->stayTime <= 0) $this->stayVec = null;
+                if(--$this->stayTime <= 0) $this->stayVec = null;
             }else{
                 $target = $this->getTarget();
                 $x = $target->x - $this->x;
@@ -66,26 +66,53 @@ abstract class Monster extends BaseEntity{
                     Enderman::NETWORK_ID => 0.121
                 ];
                 $add = $this instanceof PigZombie && $this->isAngry() ? 0.132 : $speed[static::NETWORK_ID];
-                $this->move(cos($atn) * $add * $tick, sin($atn) * $add * $tick);
-                $this->setRotation(rad2deg($atn - M_PI_2), rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2))));
+                $this->move(cos($atn) * $add, sin($atn) * $add);
+                $this->yaw = rad2deg($atn - M_PI_2);
+                $this->pitch = $y == 0 ? 0 : rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2)));
             }
         }
         $this->updateMovement();
         return $target;
     }
 
+    public function updateTick(){
+        if($this->server->getDifficulty() < 1){
+            $this->close();
+            return;
+        }
+        if(!$this->isAlive()){
+            if(++$this->deadTicks >= 23) $this->close();
+            return;
+        }
+
+        if(!$this->knockBackCheck()){
+            ++$this->moveTime;
+            $target = $this->updateMove();
+            if($target instanceof Player){
+                $this->attackOption($target);
+            }elseif($target instanceof Vector3){
+                if($this->distance($target) <= 1) $this->moveTime = 0;
+            }
+        }
+        $this->entityBaseTick();
+    }
+
     public function entityBaseTick($tickDiff = 1){
         Timings::$timerEntityBaseTick->startTiming();
 
-        if(!$this->isAlive()) return false;
-        $hasUpdate = Entity::entityBaseTick($tickDiff);
+        if(!$this->isCreated()){
+            return false;
+        }
 
+        $hasUpdate = Entity::entityBaseTick($tickDiff);
+        if($this->attackTime > 0){
+            $this->attackTime -= $tickDiff;
+        }
         if($this->isInsideOfSolid()){
             $hasUpdate = true;
             $ev = new EntityDamageEvent($this, EntityDamageEvent::CAUSE_SUFFOCATION, 1);
             $this->attack($ev->getFinalDamage(), $ev);
         }
-
         if($this instanceof Enderman){
             if($this->level->getBlock(new Vector3(Math::floorFloat($this->x), (int) $this->y, Math::floorFloat($this->z))) instanceof Water){
                 $ev = new EntityDamageEvent($this, EntityDamageEvent::CAUSE_DROWNING, 2);
@@ -107,13 +134,12 @@ abstract class Monster extends BaseEntity{
             }
         }
 
-        if($this->attackTime > 0) $this->attackTime -= $tickDiff;
         Timings::$timerEntityBaseTick->stopTiming();
         return $hasUpdate;
     }
 
-    public function targetOption(Player $player){
-        return parent::targetOption($player) && $player->isSurvival();
+    public function targetOption(Player $player, $distance){
+        return parent::targetOption($player, $distance) && $player->isSurvival();
     }
 
 }

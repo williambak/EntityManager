@@ -3,11 +3,8 @@
 namespace plugin\Entity;
 
 use plugin\EntityManager;
-use pocketmine\event\entity\EntityDamageByEntityEvent;
-use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\item\Item;
 use pocketmine\level\Level;
-use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\Short;
 use pocketmine\network\protocol\AddEntityPacket;
 use pocketmine\Player;
@@ -53,29 +50,8 @@ class CustomEntity extends Monster{
         return EntityManager::getData("custom.name", "CustomEntity");
     }
 
-    public function updateTick(){
-        if($this) return;
-        if(!$this->isAlive()){
-            if(++$this->deadTicks >= 23) $this->close();
-            return;
-        }
+    public function attackOption(Player $player){
 
-        if($this->knockBackCheck()){
-            ++$this->moveTime;
-            ++$this->attackDelay;
-            $target = $this->updateMove();
-            if($target instanceof Player){
-                if($this->attackDelay >= 16 && $this->distanceSquared($target) <= 1){
-                    $this->attackDelay = 0;
-                    $ev = new EntityDamageByEntityEvent($this, $target, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $this->getDamage()[$this->server->getDifficulty()]);
-                    $target->attack($ev->getFinalDamage(), $ev);
-                }
-            }elseif($target instanceof Vector3){
-                if($this->distance($target) <= 1) $this->moveTime = 800;
-            }
-        }
-        $this->entityBaseTick();
-        $this->updateMovement();
     }
 
     public function getDrops(){
