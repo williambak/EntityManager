@@ -46,7 +46,13 @@ abstract class BaseEntity extends Creature{
 
     public abstract function updateTick();
 
-    public function targetOption(Player $player){
+    /**
+     * @param Player $player
+     * @param int $distance
+     *
+     * @return bool
+     */
+    public function targetOption(Player $player, $distance){
         return $player->spawned && $player->isAlive() && !$player->closed;
     }
 
