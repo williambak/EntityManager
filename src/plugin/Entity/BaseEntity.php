@@ -48,7 +48,7 @@ abstract class BaseEntity extends Creature{
 
     /**
      * @param Player $player
-     * @param int $distance
+     * @param float $distance
      *
      * @return bool
      */
@@ -73,22 +73,26 @@ abstract class BaseEntity extends Creature{
                 $nearDistance = $distance;
             }
         }
-        if($this->stayTime > 0){
-            if($target != null){
-                $this->stayVec = null;
-                $this->stayTime = 0;
-            }else{
-                if($this->stayVec == null or mt_rand(1, 120) <= 3) $this->stayVec = $this->add(mt_rand(-100, 100), mt_rand(-20, 20) / 10, mt_rand(-100, 100));
+        if($target == null){
+            if($this->stayTime > 0){
+                if($this->stayVec == null or mt_rand(1, 100) <= 3) $this->stayVec = $this->add(mt_rand(-100, 100), mt_rand(-20, 20) / 10, mt_rand(-100, 100));
                 return $this->stayVec;
+            }elseif(mt_rand(1, 350) === 1){
+                $this->stayTime = mt_rand(100, 450);
+                return $this->stayVec = $this->add(mt_rand(-100, 100), mt_rand(-20, 20) / 10, mt_rand(-100, 100));
+            }elseif($this->moveTime <= 0){
+                $this->moveTime = mt_rand(100, 1000);
+                return $this->baseTarget = $this->add(mt_rand(-100, 100), 0, mt_rand(-100, 100));
+            }
+        }else{
+            if(
+                !$this instanceof PigZombie
+                || ($this instanceof PigZombie && $this->isAngry())
+            ){
+                return $target;
             }
         }
-        if(($target == null || ($this instanceof PigZombie && !$this->isAngry())) && $this->stayTime <= 0 && mt_rand(1, 380) === 1){
-            $this->stayTime = mt_rand(100, 450);
-            return $this->stayVec = $this->add(mt_rand(-100, 100), mt_rand(-20, 20) / 10, mt_rand(-100, 100));
-        }
-        if((!$this instanceof PigZombie && $target instanceof Player) || ($this instanceof PigZombie && $this->isAngry() && $target instanceof Player)){
-            return $target;
-        }elseif($this->moveTime <= 0 or !$this->baseTarget instanceof Vector3){
+        if(!$this->baseTarget instanceof Vector3){
             $this->moveTime = mt_rand(100, 1000);
             $this->baseTarget = $this->add(mt_rand(-100, 100), 0, mt_rand(-100, 100));
         }
@@ -215,7 +219,6 @@ abstract class BaseEntity extends Creature{
 
     public function move($dx, $dz, $dy = 0){
         Timings::$entityMoveTimer->startTiming();
-
         if($dy == 0 && !$this->onGround && $this->motionY != 0){
             $dy = $this->motionY;
         }
@@ -227,9 +230,8 @@ abstract class BaseEntity extends Creature{
         foreach($list as $target){
             $bb = $target->getBoundingBox();
             if(
-                !$isJump
+                $movX == 0
                 && $target instanceof Block
-                && $dy === 0
                 && $this->boundingBox->minY >= $bb->minY
                 && $this->boundingBox->minY < $bb->maxY
                 && (($up = $target->getSide(Vector3::SIDE_UP)->getBoundingBox()) == null || $up->maxY - $this->boundingBox->minY <= 1)
@@ -288,7 +290,6 @@ abstract class BaseEntity extends Creature{
         $this->isCollidedVertically = $movY != $dy;
         $this->isCollidedHorizontally = ($movX != $dx or $movZ != $dz);
         $this->isCollided = ($this->isCollidedHorizontally or $this->isCollidedVertically);
-
         Timings::$entityMoveTimer->stopTiming();
     }
 
