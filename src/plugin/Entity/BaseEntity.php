@@ -223,7 +223,8 @@ abstract class BaseEntity extends Creature{
         foreach($list as $target){
             $bb = $target->getBoundingBox();
             if(
-                $target instanceof Block
+                !$isJump
+                && $target instanceof Block
                 && $dy === 0
                 && $this->boundingBox->minY >= $bb->minY
                 && $this->boundingBox->minY < $bb->maxY
