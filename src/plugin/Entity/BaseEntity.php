@@ -52,9 +52,7 @@ abstract class BaseEntity extends Creature{
      *
      * @return bool
      */
-    public function targetOption(Player $player, $distance){
-        return $player->spawned && $player->isAlive() && !$player->closed;
-    }
+    public abstract function targetOption(Player $player, $distance);
 
     /**
      * @return Player|Vector3

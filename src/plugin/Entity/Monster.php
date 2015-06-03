@@ -139,7 +139,7 @@ abstract class Monster extends BaseEntity{
     }
 
     public function targetOption(Player $player, $distance){
-        return parent::targetOption($player) && $player->isSurvival() && $distance <= 81;
+        return $player->spawned && $player->isAlive() && !$player->closed && $player->isSurvival() && $distance <= 81;
     }
 
 }
