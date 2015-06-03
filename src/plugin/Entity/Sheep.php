@@ -30,7 +30,7 @@ class Sheep extends Animal implements Colorable{
     }
 
     public function targetOption(Player $player, $distance){
-        return parent::targetOption($player, $distance) && $player->getInventory()->getItemInHand()->getId() == Item::SEEDS;
+        return parent::targetOption($player) && $player->getInventory()->getItemInHand()->getId() == Item::SEEDS && $distance <= 49;
     }
 
     public function getDrops(){

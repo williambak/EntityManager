@@ -46,8 +46,8 @@ abstract class BaseEntity extends Creature{
 
     public abstract function updateTick();
 
-    public function targetOption(Player $player, $distance){
-        return $player->spawned && $player->isAlive() && $player->closed && $distance <= 81;
+    public function targetOption(Player $player){
+        return $player->spawned && $player->isAlive() && !$player->closed;
     }
 
     /**
@@ -231,7 +231,7 @@ abstract class BaseEntity extends Creature{
                 && $target->distanceSquared($target->add(0.5, 0.5, 0.5)) <= 1
             ){
                 $isJump = true;
-                $dy = $movY = 0.1;
+                $dy = $movY = 0.25;
                 $this->motionY = 0;
             }
             if(
@@ -270,6 +270,8 @@ abstract class BaseEntity extends Creature{
         $radius = $this->width / 2;
         $this->setComponents($this->x + $dx, $this->y + $dy, $this->z + $dz);
         $this->boundingBox->setBounds($this->x - $radius, $this->y, $this->z - $radius, $this->x + $radius, $this->y + $this->height, $this->z + $radius);
+
+        $this->checkChunks();
 
         $this->updateFallState($dy, $this->onGround = ($movY != $dy and $movY < 0));
         if($this->onGround){
