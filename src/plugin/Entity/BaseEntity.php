@@ -84,13 +84,8 @@ abstract class BaseEntity extends Creature{
                 $this->moveTime = mt_rand(100, 1000);
                 return $this->baseTarget = $this->add(mt_rand(-100, 100), 0, mt_rand(-100, 100));
             }
-        }else{
-            if(
-                !$this instanceof PigZombie
-                || ($this instanceof PigZombie && $this->isAngry())
-            ){
-                return $target;
-            }
+        }elseif(!$this instanceof PigZombie || ($this instanceof PigZombie && $this->isAngry())){
+            return $target;
         }
         if(!$this->baseTarget instanceof Vector3){
             $this->moveTime = mt_rand(100, 1000);

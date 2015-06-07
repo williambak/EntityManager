@@ -82,12 +82,6 @@ class EntityManager extends PluginBase implements Listener{
         }
 
         self::$entityData = [
-            /*"custom" =>[
-                "name" => isset($data["custom"]["name"]) ? $data["custom"]["name"] : "CustomEntity",
-                "type" => isset($data["custom"]["type"]) ? $data["custom"]["type"] : 32, //엔티티 타입
-                "damage" => isset($data["custom"]["damage"]) ? $data["custom"]["damage"] : [0, 3, 4, 6], //난이도별 데미지
-                "drops" => isset($data["custom"]["drops"]) ? $data["custom"]["drops"] : [], //죽을시 드롭할 아이템
-            ],*/
             "entity" => [
                 "explode" => isset($data["entity"]["explode"]) ? $data["entity"]["explode"] : true,
             ],
@@ -252,7 +246,10 @@ class EntityManager extends PluginBase implements Listener{
     public function EntityDespawnEvent(EntityDespawnEvent $ev){
         $entity = $ev->getEntity();
         if($entity instanceof BaseEntity or $entity instanceof Minecart){
-            unset(self::$entities[$entity->getId()]);
+            foreach(self::$entities as $id => $ent){
+                /** @var BaseEntity $ent */
+                if($ent->closed) unset(self::$entities[$id]);
+            }
         }
     }
 
@@ -296,11 +293,12 @@ class EntityManager extends PluginBase implements Listener{
         $output = "[EntityManager]";
         switch($cmd->getName()){
             case "제거":
-                $level = $i instanceof Player ? $i->getLevel() : null;
                 if(isset($sub[0])){
                     $level = $this->getServer()->getLevelByName($sub[0]);
+                }else{
+                    $level = $i instanceof Player ? $i->getLevel() : null;
                 }
-                self::clearEntity($level, [BaseEntity::class, Projectile::class]);
+                self::clearEntity($level, [BaseEntity::class, Projectile::class, ItemEntity::class]);
                 $output .= "소환된 엔티티를 모두 제거했어요";
                 break;
             case "체크":
@@ -308,9 +306,10 @@ class EntityManager extends PluginBase implements Listener{
                 $animal = [];
                 $item = [];
                 $projectile = [];
-                $level = $i instanceof Player ? $i->getLevel() : $this->getServer()->getDefaultLevel();
                 if(isset($sub[0])){
                     $level = $this->getServer()->getLevelByName($sub[0]);
+                }else{
+                    $level = $i instanceof Player ? $i->getLevel() : $this->getServer()->getDefaultLevel();
                 }
                 foreach($level->getEntities() as $id => $ent){
                     if($ent instanceof Monster){
