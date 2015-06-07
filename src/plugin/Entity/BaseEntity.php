@@ -140,7 +140,7 @@ abstract class BaseEntity extends Creature{
     }
 
     public function spawnTo(Player $player){
-        if(isset($this->hasSpawned[$player->getId()]) or !isset($player->usedChunks[Level::chunkHash($this->chunk->getX(), $this->chunk->getZ())])) return;
+        if(isset($this->hasSpawned[$player->getLoaderId()]) or !isset($player->usedChunks[Level::chunkHash($this->chunk->getX(), $this->chunk->getZ())])) return;
 
         $pk = new AddEntityPacket();
         $pk->eid = $this->getID();
