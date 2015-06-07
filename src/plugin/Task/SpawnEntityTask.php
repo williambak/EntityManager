@@ -19,13 +19,10 @@ class SpawnEntityTask extends PluginTask{
             $radius = (int) $data["radius"];
             $level = $this->owner->getServer()->getDefaultLevel();
             $pos = (new Vector3(...explode(":", $pos)))->add(mt_rand(-$radius, $radius), mt_rand(-$radius, $radius), mt_rand(-$radius, $radius));
-            $bb = $level->getBlock($pos)->getBoundingBox();
-            $bb1 = $level->getBlock($pos->add(0, 1))->getBoundingBox();
-            $bb2 = $level->getBlock($pos->add(0, -1))->getBoundingBox();
             if(
-                ($bb !== null and $bb->maxY - $bb->minY > 0)
-                || ($bb1 !== null and $bb1->maxY - $bb1->minY > 0)
-                || ($bb2 !== null and $bb2->maxY - $bb2->minY > 1)
+                (($bb = $level->getBlock($pos)->getBoundingBox()) !== null and $bb->maxY - $bb->minY > 0)
+                || (($bb1 = $level->getBlock($pos->add(0, 1))->getBoundingBox()) !== null and $bb1->maxY - $bb1->minY > 0)
+                || (($bb2 = $level->getBlock($pos->add(0, -1))->getBoundingBox()) !== null and $bb2->maxY - $bb2->minY > 1)
             ) continue;
             EntityManager::createEntity($data["mob-list"][mt_rand(0, count($data["mob-list"]) - 1)], Position::fromObject($pos, $level));
         }

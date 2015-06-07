@@ -75,21 +75,31 @@ abstract class BaseEntity extends Creature{
         }
         if($target == null){
             if($this->stayTime > 0){
-                if($this->stayVec == null or mt_rand(1, 100) <= 3) $this->stayVec = $this->add(mt_rand(-100, 100), mt_rand(-20, 20) / 10, mt_rand(-100, 100));
+                if($this->stayVec == null or mt_rand(1, 100) <= 3){
+                    $x = mt_rand(25, 80);
+                    $z = mt_rand(25, 80);
+                    return $this->stayVec = $this->add(mt_rand(0, 1) ? $x : -$x, mt_rand(-20, 20) / 10, mt_rand(0, 1) ? $z : -$z);
+                }
                 return $this->stayVec;
             }elseif(mt_rand(1, 350) === 1){
                 $this->stayTime = mt_rand(100, 450);
-                return $this->stayVec = $this->add(mt_rand(-100, 100), mt_rand(-20, 20) / 10, mt_rand(-100, 100));
+                $x = mt_rand(25, 80);
+                $z = mt_rand(25, 80);
+                return $this->stayVec = $this->add(mt_rand(0, 1) ? $x : -$x, mt_rand(-20, 20) / 10, mt_rand(0, 1) ? $z : -$z);
             }elseif($this->moveTime <= 0){
                 $this->moveTime = mt_rand(100, 1000);
-                return $this->baseTarget = $this->add(mt_rand(-100, 100), 0, mt_rand(-100, 100));
+                $x = mt_rand(25, 80);
+                $z = mt_rand(25, 80);
+                return $this->baseTarget = $this->add(mt_rand(0, 1) ? $x : -$x, 0, mt_rand(0, 1) ? $z : -$z);
             }
         }elseif(!$this instanceof PigZombie || ($this instanceof PigZombie && $this->isAngry())){
             return $target;
         }
         if(!$this->baseTarget instanceof Vector3){
             $this->moveTime = mt_rand(100, 1000);
-            $this->baseTarget = $this->add(mt_rand(-100, 100), 0, mt_rand(-100, 100));
+            $x = mt_rand(25, 80);
+            $z = mt_rand(25, 80);
+            $this->baseTarget = $this->add(mt_rand(0, 1) ? $x : -$x, 0, mt_rand(0, 1) ? $z : -$z);
         }
         return $this->baseTarget;
     }
@@ -237,8 +247,7 @@ abstract class BaseEntity extends Creature{
                 $this->motionY = 0;
             }
             if(
-                $dy != 0
-                and $this->boundingBox->maxX > $bb->minX
+                $this->boundingBox->maxX > $bb->minX
                 and $this->boundingBox->minX < $bb->maxX
                 and $this->boundingBox->maxZ > $bb->minZ
                 and $this->boundingBox->minZ < $bb->maxZ
@@ -298,8 +307,7 @@ abstract class BaseEntity extends Creature{
             4 => 0.3,
             5 => 0.9,
         ];
-        $motionY = isset($y[$this->moveTime]) ?  $y[$this->moveTime] : 0;
-        $this->move(-cos($atn = atan2($z, $x)) * 0.41, -sin($atn) * 0.41, $motionY);
+        $this->move(-cos($atn = atan2($z, $x)) * 0.41, -sin($atn) * 0.41, isset($y[$this->moveTime]) ?  $y[$this->moveTime] : 0);
         if(--$this->moveTime <= 0) $this->attacker = null;
         return true;
     }

@@ -246,10 +246,7 @@ class EntityManager extends PluginBase implements Listener{
     public function EntityDespawnEvent(EntityDespawnEvent $ev){
         $entity = $ev->getEntity();
         if($entity instanceof BaseEntity or $entity instanceof Minecart){
-            foreach(self::$entities as $id => $ent){
-                /** @var BaseEntity $ent */
-                if($ent->closed) unset(self::$entities[$id]);
-            }
+            unset(self::$entities[$entity->getId()]);
         }
     }
 

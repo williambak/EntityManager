@@ -56,7 +56,6 @@ abstract class Monster extends BaseEntity{
                 $x = $target->x - $this->x;
                 $y = $target->y - $this->y;
                 $z = $target->z - $this->z;
-                $atn = atan2($z, $x);
                 $speed = [
                     Zombie::NETWORK_ID => 0.11,
                     Creeper::NETWORK_ID => 0.09,
@@ -66,7 +65,7 @@ abstract class Monster extends BaseEntity{
                     Enderman::NETWORK_ID => 0.121
                 ];
                 $add = $this instanceof PigZombie && $this->isAngry() ? 0.132 : $speed[static::NETWORK_ID];
-                $this->move(cos($atn) * $add, sin($atn) * $add);
+                $this->move(cos($atn = atan2($z, $x)) * $add, sin($atn) * $add);
                 $this->yaw = rad2deg($atn - M_PI_2);
                 $this->pitch = $y == 0 ? 0 : rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2)));
             }
@@ -86,7 +85,7 @@ abstract class Monster extends BaseEntity{
         }
 
         if(!$this->knockBackCheck()){
-            ++$this->moveTime;
+            --$this->moveTime;
             $target = $this->updateMove();
             if($target instanceof Player){
                 $this->attackOption($target);
