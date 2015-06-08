@@ -46,29 +46,28 @@ abstract class Monster extends BaseEntity{
     }
 
     public function updateMove(){
+        if(!$this->isMovement()) return null;
         $target = null;
-        if($this->isMovement()){
-            if($this->stayTime > 0){
-                $this->move(0, 0);
-                if(--$this->stayTime <= 0) $this->stayVec = null;
-            }else{
-                $target = $this->getTarget();
-                $x = $target->x - $this->x;
-                $y = $target->y - $this->y;
-                $z = $target->z - $this->z;
-                $speed = [
-                    Zombie::NETWORK_ID => 0.11,
-                    Creeper::NETWORK_ID => 0.09,
-                    Skeleton::NETWORK_ID => 0.1,
-                    Spider::NETWORK_ID => 0.113,
-                    PigZombie::NETWORK_ID => 0.115,
-                    Enderman::NETWORK_ID => 0.121
-                ];
-                $add = $this instanceof PigZombie && $this->isAngry() ? 0.132 : $speed[static::NETWORK_ID];
-                $this->move(cos($atn = atan2($z, $x)) * $add, sin($atn) * $add);
-                $this->yaw = rad2deg($atn - M_PI_2);
-                $this->pitch = $y == 0 ? 0 : rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2)));
-            }
+        if($this->stayTime > 0){
+            $this->move(0, 0);
+            if(--$this->stayTime <= 0) $this->stayVec = null;
+        }else{
+            $target = $this->getTarget();
+            $x = $target->x - $this->x;
+            $y = $target->y - $this->y;
+            $z = $target->z - $this->z;
+            $speed = [
+                Zombie::NETWORK_ID => 0.11,
+                Creeper::NETWORK_ID => 0.09,
+                Skeleton::NETWORK_ID => 0.1,
+                Spider::NETWORK_ID => 0.113,
+                PigZombie::NETWORK_ID => 0.115,
+                Enderman::NETWORK_ID => 0.121
+            ];
+            $add = $this instanceof PigZombie && $this->isAngry() ? 0.132 : $speed[static::NETWORK_ID];
+            $this->move(cos($atn = atan2($z, $x)) * $add, sin($atn) * $add);
+            $this->yaw = rad2deg($atn - M_PI_2);
+            $this->pitch = $y == 0 ? 0 : rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2)));
         }
         $this->updateMovement();
         return $target;

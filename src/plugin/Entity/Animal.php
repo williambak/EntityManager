@@ -20,24 +20,21 @@ abstract class Animal extends BaseEntity implements Ageable{
     }
 
     public function updateMove(){
+        if(!$this->isMovement()) return null;
         $target = null;
-        if($this->isMovement()){
-            $target = $this->getTarget();
-            $x = $target->x - $this->x;
-            $y = $target->y - $this->y;
-            $z = $target->z - $this->z;
-            $atn = atan2($z, $x);
-            if($this->stayTime > 0){
-                $this->move(0, 0);
-                if(--$this->stayTime <= 0) $this->stayVec = null;
-            }else{
-                $this->move(cos($atn) * 0.07, sin($atn) * 0.07);
-            }
-            $this->yaw = rad2deg($atn - M_PI_2);
-            $this->pitch = rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2)));
-        }else{
+        $target = $this->getTarget();
+        $x = $target->x - $this->x;
+        $y = $target->y - $this->y;
+        $z = $target->z - $this->z;
+        $atn = atan2($z, $x);
+        if($this->stayTime > 0){
             $this->move(0, 0);
+            if(--$this->stayTime <= 0) $this->stayVec = null;
+        }else{
+            $this->move(cos($atn) * 0.07, sin($atn) * 0.07);
         }
+        $this->yaw = rad2deg($atn - M_PI_2);
+        $this->pitch = rad2deg(-atan2($y, sqrt($x ** 2 + $z ** 2)));
         $this->updateMovement();
         return $target;
     }

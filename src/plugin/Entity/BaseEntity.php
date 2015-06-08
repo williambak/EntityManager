@@ -166,7 +166,7 @@ abstract class BaseEntity extends Creature{
         if($this->lastYaw != $this->yaw) $this->lastYaw = $this->yaw;
         if($this->lastPitch != $this->pitch) $this->lastPitch = $this->pitch;
 
-        foreach($this->hasSpawned as $player) $player->addEntityMovement($this->id, $this->x, $this->y, $this->z, $this->yaw, $this->pitch, $this->yaw);
+        $this->level->addEntityMovement($this->chunk->getX(), $this->chunk->getZ(), $this->id, $this->x, $this->y, $this->z, $this->yaw, $this->pitch);
     }
 
     public function attack($damage, EntityDamageEvent $source){
